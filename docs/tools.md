@@ -1,6 +1,6 @@
-# Paymove MCP Server — Complete Reference of All 22 Tools
+# Paymove MCP Server — Complete Reference of All 19 Tools
 
-This document provides the complete technical reference for all **22 `@Tool` methods** exposed by the production **Paymove MCP Server** (`paymove-mcp-server`, Streamable HTTP endpoint `https://mcp-api.paymove.io/mcp`).
+This document provides the complete technical reference for all **19 `@Tool` methods** across **4 categories** exposed by the production **Paymove MCP Server** (`paymove-mcp-server`, Streamable HTTP endpoint `https://mcp-api.paymove.io/mcp`).
 
 ---
 
@@ -30,10 +30,6 @@ This document provides the complete technical reference for all **22 `@Tool` met
    - [`parking-create-product`](#17-parking-create-product)
    - [`parking-create-event`](#18-parking-create-event)
    - [`parking-get-pricing`](#19-parking-get-pricing)
-6. [Category 5: KSeF — Polish National e-Invoicing System (`3 tools`)](#category-5-ksef--polish-national-e-invoicing-system-3-tools)
-   - [`list-ksef-invoices`](#20-list-ksef-invoices)
-   - [`get-ksef-invoice`](#21-get-ksef-invoice)
-   - [`create-ksef-checkout`](#22-create-ksef-checkout)
 
 ---
 
@@ -45,7 +41,6 @@ This document provides the complete technical reference for all **22 `@Tool` met
   - `150000` = **1500.00 PLN**
 - **Tool Visibility (`tools/list`):**
   - **Partner Mode (`X-API-KEY`):** Exposes the **19 Partner tools** (Categories 1–4: `General`, `Pay`, `Pay&Go`, `Parking`). Optional `X-SANDBOX-API-KEY` (`sk_test_...`) routes downstream operations to the Paymove Sandbox (`pay.sandbox.paymove.io` / `go.sandbox.paymove.io`).
-  - **KSeF Mode (`X-KSEF-TOKEN`):** Exposes the **3 KSeF tools** (Category 5: `list-ksef-invoices`, `get-ksef-invoice`, `create-ksef-checkout`). KSeF tools operate in production mode only.
 - **DTO Wrapping:** Tools using a request DTO take a top-level `request` object matching the schema below; tools with direct `@ToolParam` parameters (`list-partner-products`, `go-get-product`, `parking-get-pricing`) take parameters directly at the root of `arguments`.
 
 ---
@@ -663,6 +658,7 @@ Returns the full `ParkingGetPricingResponse` JSON object containing `entries`, `
 
 ---
 
+<!--
 ## Category 5: KSeF — Polish National e-Invoicing System (`3 tools`)
 
 > **Authentication Requirement:** All 3 KSeF tools require the `X-KSEF-TOKEN` HTTP header containing the entity NIP segment `|nip-XXXXXXXXXX|`. KSeF tools are available in production mode only (calling them with sandbox credentials returns an error).
@@ -745,3 +741,4 @@ Creates a Paymove payment checkout link (`checkoutUrl`) for a KSeF invoice.
   "checkoutUrl": "https://pay.paymove.io/550e8400-e29b-41d4-a716-446655440000/1234567890-20261024-ABCDEF-12"
 }
 ```
+-->

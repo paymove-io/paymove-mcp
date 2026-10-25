@@ -6,24 +6,23 @@
 
 **Włącz płatności jednym zdaniem.**
 
-Oficjalna dokumentacja i szablony konfiguracji serwera [Model Context Protocol (MCP)](https://modelcontextprotocol.io) dla **[Paymove](https://paymove.io)** — infrastruktury płatniczej AI-first dla e-commerce, usług cyfrowych, sprzedaży biletów (Pay&Go), mobilności i parkingów oraz faktur ustrukturyzowanych KSeF.
+Oficjalna dokumentacja i szablony konfiguracji serwera [Model Context Protocol (MCP)](https://modelcontextprotocol.io) dla **[Paymove](https://paymove.io)** — infrastruktury płatniczej AI-first dla e-commerce, usług cyfrowych, sprzedaży biletów (Pay&Go), mobilności i parkingów.
 
-**[English Documentation (README.md)](./README.md)** | **[Pełna referencja 22 narzędzi (docs/tools.md)](./docs/tools.md)** | **[Manifest MCP Registry (server.json)](./server.json)**
+**[English Documentation (README.md)](./README.md)** | **[Pełna referencja 19 narzędzi (docs/tools.md)](./docs/tools.md)** | **[Manifest MCP Registry (server.json)](./server.json)**
 
 ---
 
 ## Czym jest Paymove i serwer Paymove MCP?
 
-**Paymove** (`paymove.io`) to polska bramka płatnicza i infrastruktura commerce, która pozwala firmom, platformom SaaS oraz agentom AI uruchamiać strony płatności, linki płatnicze, bilety cyfrowe, strefy parkingowe oraz płatności za faktury z KSeF za pomocą poleceń w języku naturalnym lub przez API REST i protokół MCP.
+**Paymove** (`paymove.io`) to polska bramka płatnicza i infrastruktura commerce, która pozwala firmom, platformom SaaS oraz agentom AI uruchamiać strony płatności, linki płatnicze, bilety cyfrowe oraz strefy parkingowe za pomocą poleceń w języku naturalnym lub przez API REST i protokół MCP.
 
 - **Zdalny endpoint MCP:** `https://mcp-api.paymove.io/mcp` (transport **Streamable HTTP**)
 - **Bez lokalnej instalacji:** Zdalny serwer MCP działa w chmurze Paymove — podłącz go bezpośrednio w **Claude Code**, **Cursor**, **Claude Desktop**, **Windsurf** lub dowolnym kliencie obsługującym standard MCP.
-- **22 narzędzia produkcyjne w 5 obszarach produktowych:**
+- **19 narzędzi produkcyjnych w 4 obszarach produktowych:**
   1. **General (`1 narzędzie`)** — Przeglądanie istniejących produktów partnera w przepływach `PAY`, `GO` oraz `PARKING`.
   2. **Pay / DocPay & Payment Links (`7 narzędzi`)** — Tworzenie gotowych linków płatniczych (`pay.paymove.io`), zarządzanie wariantami cenowymi oraz generowanie transakcji checkout (`create-subproduct`) z identyfikatorem zamówienia `externalId`.
   3. **Pay&Go (`8 narzędzi`)** — Budowanie samoobsługowych stron sprzedaży biletów, usług i produktów cyfrowych (`go.paymove.io`), zarządzanie cennikiem, generowanie ilustracji AI dla biletów oraz tłumaczenia wielojęzyczne (`pl-PL`, `en-US`, `de-DE`, `uk-UA`).
   4. **Parking / Mobility (`3 narzędzia`)** — Uruchamianie płatnych stref parkingowych (`park.paymove.io`), konfiguracja taryf czasowych ISO-8601, limitów dziennych i tygodniowych, abonamentów oraz wydarzeń specjalnych.
-  5. **KSeF — Krajowy System e-Faktur (`3 narzędzia`)** — Pobieranie listy faktur zakupowych i sprzedażowych z KSeF, parsowanie struktury XML faktury oraz natychmiastowe generowanie linków płatniczych Paymove do opłacenia faktury KSeF.
 
 ---
 
@@ -53,7 +52,6 @@ Oficjalna dokumentacja i szablony konfiguracji serwera [Model Context Protocol (
 3. Wygeneruj swój klucz API partnera (`X-API-KEY`):
    - Klucz produkcyjny (`sk_live_...`) do pracy na środowisku produkcyjnym
    - Klucz testowy (`sk_test_...`) do testów w środowisku sandbox (`X-SANDBOX-API-KEY`)
-4. *(Opcjonalnie — dla narzędzi KSeF)* Jeśli chcesz korzystać z narzędzi Krajowego Systemu e-Faktur (**KSeF**), przygotuj swój token autoryzacyjny KSeF (`X-KSEF-TOKEN`, zawierający segment NIP podmiotu `|nip-XXXXXXXXXX|`).
 
 ---
 
@@ -66,13 +64,6 @@ Uruchom poniższe polecenie w terminalu, aby dodać zdalny serwer Paymove MCP pr
 ```bash
 claude mcp add --transport http paymove https://mcp-api.paymove.io/mcp \
   --header "X-API-KEY: TWOJ_KLUCZ_API_PAYMOVE"
-```
-
-Jeśli korzystasz również z integracji KSeF:
-
-```bash
-claude mcp add --transport http paymove-ksef https://mcp-api.paymove.io/mcp \
-  --header "X-KSEF-TOKEN: TWOJ_TOKEN_KSEF"
 ```
 
 ---
@@ -88,27 +79,6 @@ Utwórz lub zaktualizuj plik `.cursor/mcp.json` w katalogu projektu (lub globaln
       "url": "https://mcp-api.paymove.io/mcp",
       "headers": {
         "X-API-KEY": "TWOJ_KLUCZ_API_PAYMOVE"
-      }
-    }
-  }
-}
-```
-
-Jeśli chcesz korzystać także z narzędzi KSeF, dodaj osobną konfigurację z nagłówkiem `X-KSEF-TOKEN`:
-
-```json
-{
-  "mcpServers": {
-    "paymove": {
-      "url": "https://mcp-api.paymove.io/mcp",
-      "headers": {
-        "X-API-KEY": "TWOJ_KLUCZ_API_PAYMOVE"
-      }
-    },
-    "paymove-ksef": {
-      "url": "https://mcp-api.paymove.io/mcp",
-      "headers": {
-        "X-KSEF-TOKEN": "TWOJ_TOKEN_KSEF"
       }
     }
   }
@@ -151,13 +121,12 @@ Serwer Paymove MCP komunikuje się przez protokół **Streamable HTTP** (`https:
 | :--- | :--- | :--- | :--- |
 | `X-API-KEY` | **Tak** (dla narzędzi Partnera) | 19 narzędzi Partnera (`General`, `Pay`, `Pay&Go`, `Parking`) | Klucz API wygenerowany w [panel.paymove.io](https://panel.paymove.io). Uwierzytelnia konto partnera i autoryzuje tworzenie produktów oraz linków płatniczych. |
 | `X-SANDBOX-API-KEY` | Opcjonalnie | Środowisko testowe (Sandbox) | Klucz API środowiska sandbox zaczynający się od prefiksu `sk_test_...`. Po jego przekazaniu serwer kieruje wywołania do środowiska testowego (`pay.sandbox.paymove.io` / `go.sandbox.paymove.io`). |
-| `X-KSEF-TOKEN` | **Tak** (dla narzędzi KSeF) | 3 narzędzia KSeF (`list-ksef-invoices`, `get-ksef-invoice`, `create-ksef-checkout`) | Token autoryzacyjny KSeF zawierający segment NIP podmiotu w formacie `\|nip-XXXXXXXXXX\|`. Gdy nagłówek `X-KSEF-TOKEN` jest obecny, `tools/list` udostępnia 3 narzędzia KSeF. Narzędzia KSeF działają wyłącznie w trybie produkcyjnym (niedostępne w sandboxie). |
 
 > **Ważna uwaga dotycząca kwot:** Wszystkie kwoty pieniężne w narzędziach Paymove MCP (`price`, `amount`, `grossAmount`, `cost`, `fixedCost`, `maximumCostPerDay` itd.) podawane są jako liczby całkowite w **najmniejszych jednostkach waluty (groszach, 1/100 PLN)**. Przykładowo wartość `1000` oznacza **10,00 PLN**, a `150000` oznacza **1500,00 PLN**.
 
 ---
 
-## Przegląd wszystkich 22 narzędzi MCP
+## Przegląd wszystkich 19 narzędzi MCP
 
 Pełna dokumentacja parametrów wejściowych i schematów DTO znajduje się w pliku **[`docs/tools.md`](./docs/tools.md)**.
 
@@ -230,21 +199,6 @@ Uruchamianie płatnych stref parkingowych (`https://park.paymove.io/{shortName}`
 
 ---
 
-### 5. KSeF — Krajowy System e-Faktur (3 narzędzia)
-
-Bezpośrednia integracja z **Krajowym Systemem e-Faktur (KSeF)** pozwalająca pobierać listy faktur, analizować ich strukturę XML oraz generować linki płatnicze Paymove do opłacenia faktur do kwoty 63 750,00 PLN.
-
-| Nazwa narzędzia | Opis |
-| :--- | :--- |
-| `list-ksef-invoices` | Pobiera listę faktur z KSeF (`buyer` — zakupowe lub `seller` — sprzedażowe) z wybranego zakresu dat dla NIP-u zawartego w `X-KSEF-TOKEN`. |
-| `get-ksef-invoice` | Pobiera plik XML faktury z KSeF po numerze `ksefNumber` i zwraca go jako strukturę JSON (kwoty, NIP sprzedawcy/nabywcy, pozycje oraz numer rachunku IBAN). |
-| `create-ksef-checkout` | Tworzy link płatniczy Paymove (`checkoutUrl`) dla faktury z KSeF (`buyer` lub `seller`, maksymalna kwota brutto `6375000` groszy = 63 750,00 PLN). |
-
-**Przykładowy prompt:**
-> *„Wylistuj moje faktury zakupowe z KSeF z ostatnich 14 dni, sprawdź szczegóły najnowszej faktury i wygeneruj dla niej link płatniczy Paymove.”*
-
----
-
 ## Struktura repozytorium
 
 ```text
@@ -254,7 +208,7 @@ Bezpośrednia integracja z **Krajowym Systemem e-Faktur (KSeF)** pozwalająca po
 ├── LICENSE                            # Licencja MIT
 ├── server.json                        # Manifest dla oficjalnego MCP Registry (registry.modelcontextprotocol.io)
 ├── docs/
-│   └── tools.md                       # Pełna referencja wszystkich 22 narzędzi MCP i schematów DTO
+│   └── tools.md                       # Pełna referencja wszystkich 19 narzędzi MCP i schematów DTO
 └── examples/
     ├── cursor-mcp.json                # Przykładowa konfiguracja dla edytora Cursor
     └── claude_desktop_config.json     # Przykładowa konfiguracja dla aplikacji Claude Desktop

@@ -6,24 +6,23 @@
 
 **Enable payments with a single sentence.**
 
-Official [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server documentation and configuration templates for **[Paymove](https://paymove.io)** — the AI-first payment infrastructure for Polish and European e-commerce, digital services, ticketing, mobility, and KSeF e-invoicing.
+Official [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server documentation and configuration templates for **[Paymove](https://paymove.io)** — the AI-first payment infrastructure for Polish and European e-commerce, digital services, ticketing, and mobility.
 
-**[Polska wersja dokumentacji (README.pl.md)](./README.pl.md)** | **[Full 22-Tool Reference (docs/tools.md)](./docs/tools.md)** | **[MCP Registry Manifest (server.json)](./server.json)**
+**[Polska wersja dokumentacji (README.pl.md)](./README.pl.md)** | **[Full 19-Tool Reference (docs/tools.md)](./docs/tools.md)** | **[MCP Registry Manifest (server.json)](./server.json)**
 
 ---
 
 ## What is Paymove & Paymove MCP Server?
 
-**Paymove** (`paymove.io`) is a Polish payment gateway and commerce infrastructure provider enabling merchants, SaaS platforms, and AI agents to launch payment pages, checkout links, digital tickets, parking tariffs, and KSeF invoice payments through natural-language prompts or REST/MCP APIs.
+**Paymove** (`paymove.io`) is a Polish payment gateway and commerce infrastructure provider enabling merchants, SaaS platforms, and AI agents to launch payment pages, checkout links, digital tickets, and parking tariffs through natural-language prompts or REST/MCP APIs.
 
 - **Remote MCP Endpoint:** `https://mcp-api.paymove.io/mcp` (Streamable HTTP transport)
 - **Zero local installation required:** Hosted remote MCP server — connect directly from **Claude Code**, **Cursor**, **Claude Desktop**, **Windsurf**, or any MCP-compatible AI agent.
-- **22 production tools across 5 product domains:**
+- **19 production tools across 4 product domains:**
   1. **General (`1 tool`)** — Inspect existing partner products across `PAY`, `GO`, and `PARKING` flows.
   2. **Pay / DocPay & Payment Links (`7 tools`)** — Create shareable payment links (`pay.paymove.io`), manage multi-tier pricing entries, and generate order-tracked e-commerce checkouts (`create-subproduct`).
   3. **Pay&Go (`8 tools`)** — Build instant self-service ticket & digital product storefronts (`go.paymove.io`), manage ticket options, generate AI ticket illustrations, and configure multilingual translations (`pl-PL`, `en-US`, `de-DE`, `uk-UA`).
   4. **Parking & Mobility (`3 tools`)** — Launch time-based paid parking zones (`park.paymove.io`), configure ISO-8601 duration tariffs, daily/weekly caps, subscriptions, and special event rates.
-  5. **KSeF — Polish National e-Invoicing System (`3 tools`)** — Query purchase and sales invoices directly from KSeF, parse FA(2)/FA(3) XML structures, and generate instant Paymove payment links for KSeF invoices.
 
 ---
 
@@ -53,7 +52,6 @@ Official [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server 
 3. Generate your Partner API key (`X-API-KEY`):
    - Production key (`sk_live_...`) for live products and checkouts
    - Sandbox key (`sk_test_...`) for testing in the sandbox environment (`X-SANDBOX-API-KEY`)
-4. *(Optional — KSeF flow only)* If you want your AI agent to list, inspect, and pay invoices from the Polish National e-Invoicing System (**KSeF**), prepare your KSeF authorization token (`X-KSEF-TOKEN`, containing your entity identifier `|nip-XXXXXXXXXX|`).
 
 ---
 
@@ -66,13 +64,6 @@ Run the following command in your terminal to register the remote Paymove MCP se
 ```bash
 claude mcp add --transport http paymove https://mcp-api.paymove.io/mcp \
   --header "X-API-KEY: YOUR_PAYMOVE_API_KEY"
-```
-
-If you also use KSeF e-invoicing tools:
-
-```bash
-claude mcp add --transport http paymove-ksef https://mcp-api.paymove.io/mcp \
-  --header "X-KSEF-TOKEN: YOUR_KSEF_TOKEN"
 ```
 
 ---
@@ -88,27 +79,6 @@ Create or update `.cursor/mcp.json` in your project root (or `~/.cursor/mcp.json
       "url": "https://mcp-api.paymove.io/mcp",
       "headers": {
         "X-API-KEY": "YOUR_PAYMOVE_API_KEY"
-      }
-    }
-  }
-}
-```
-
-For KSeF invoice automation, add a dedicated KSeF connection:
-
-```json
-{
-  "mcpServers": {
-    "paymove": {
-      "url": "https://mcp-api.paymove.io/mcp",
-      "headers": {
-        "X-API-KEY": "YOUR_PAYMOVE_API_KEY"
-      }
-    },
-    "paymove-ksef": {
-      "url": "https://mcp-api.paymove.io/mcp",
-      "headers": {
-        "X-KSEF-TOKEN": "YOUR_KSEF_TOKEN"
       }
     }
   }
@@ -151,13 +121,12 @@ Paymove MCP Server uses HTTP headers on the Streamable HTTP transport (`https://
 | :--- | :--- | :--- | :--- |
 | `X-API-KEY` | **Yes** (for Partner tools) | 19 Partner tools (`General`, `Pay`, `Pay&Go`, `Parking`) | Partner API key generated in [panel.paymove.io](https://panel.paymove.io). Authenticates your partner account and authorizes product & checkout management. |
 | `X-SANDBOX-API-KEY` | Optional | Sandbox environment | Sandbox API key starting with `sk_test_...`. When provided, the MCP server routes downstream operations to the Paymove Sandbox environment (`pay.sandbox.paymove.io` / `go.sandbox.paymove.io`). |
-| `X-KSEF-TOKEN` | **Yes** (for KSeF tools) | 3 KSeF tools (`list-ksef-invoices`, `get-ksef-invoice`, `create-ksef-checkout`) | KSeF authorization token containing the entity tax identifier segment `\|nip-XXXXXXXXXX\|`. Note: When `X-KSEF-TOKEN` is sent, `tools/list` exposes the 3 KSeF tools. KSeF tools are available in production mode only (not in sandbox). |
 
 > **Important Note on Monetary Amounts:** All monetary values in Paymove MCP tools (`price`, `amount`, `grossAmount`, `cost`, `fixedCost`, `maximumCostPerDay`, etc.) are expressed as integers in **minor currency units (1/100 PLN — grosze)**. For example, `1000` represents **10.00 PLN**, and `150000` represents **1500.00 PLN**.
 
 ---
 
-## Overview of All 22 MCP Tools
+## Overview of All 19 MCP Tools
 
 See **[`docs/tools.md`](./docs/tools.md)** for full input schemas, field constraints, and example payloads.
 
@@ -230,21 +199,6 @@ Launch QR/web paid parking zones (`https://park.paymove.io/{shortName}`) with IS
 
 ---
 
-### 5. KSeF — Polish National e-Invoicing System (3 tools)
-
-Connect directly to Poland's **Krajowy System e-Faktur (KSeF)** to list invoices, inspect structured XML data, and generate Paymove payment links for invoices up to 63,750.00 PLN.
-
-| Tool Name | Description |
-| :--- | :--- |
-| `list-ksef-invoices` | Lists KSeF invoices (`buyer` / purchased or `seller` / issued) for a given date range using the NIP encoded in `X-KSEF-TOKEN`. |
-| `get-ksef-invoice` | Downloads a KSeF invoice XML by `ksefNumber` and returns it parsed as JSON (amounts, seller/buyer NIP, line items, and bank account IBAN). |
-| `create-ksef-checkout` | Creates a Paymove payment checkout URL (`checkoutUrl`) for a KSeF invoice (`buyer` or `seller`, up to `6375000` grosze = 63,750.00 PLN). |
-
-**Example Prompts:**
-> *"List my purchased KSeF invoices from the last 14 days, show the details of the latest invoice, and generate a Paymove payment link so I can pay it."*
-
----
-
 ## Repository Structure
 
 ```text
@@ -254,7 +208,7 @@ Connect directly to Poland's **Krajowy System e-Faktur (KSeF)** to list invoices
 ├── LICENSE                            # MIT License
 ├── server.json                        # Official MCP Registry manifest (registry.modelcontextprotocol.io)
 ├── docs/
-│   └── tools.md                       # Complete reference for all 22 MCP tools & DTO schemas
+│   └── tools.md                       # Complete reference for all 19 MCP tools & DTO schemas
 └── examples/
     ├── cursor-mcp.json                # Sample Cursor MCP configuration
     └── claude_desktop_config.json     # Sample Claude Desktop configuration

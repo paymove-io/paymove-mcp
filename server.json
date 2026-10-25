@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
   "name": "io.paymove/paymove-mcp",
   "title": "Paymove MCP Server",
-  "description": "Official Paymove MCP server for payment links, checkouts, Pay&Go tickets, parking zones, and Polish KSeF e-invoicing.",
+  "description": "Official Paymove MCP server for payment links, checkouts, Pay&Go tickets, and parking zones.",
   "version": "1.0.0",
   "websiteUrl": "https://paymove.io",
   "repository": {
@@ -23,12 +23,6 @@
         {
           "name": "X-SANDBOX-API-KEY",
           "description": "Optional Paymove Sandbox API Key (starts with sk_test_) to route operations to the Paymove Sandbox environment.",
-          "isRequired": false,
-          "isSecret": true
-        },
-        {
-          "name": "X-KSEF-TOKEN",
-          "description": "Optional Polish National e-Invoicing System (KSeF) authorization token (containing |nip-XXXXXXXXXX|) for KSeF invoice tools.",
           "isRequired": false,
           "isSecret": true
         }
