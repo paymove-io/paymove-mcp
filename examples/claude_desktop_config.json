@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "paymove": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp-api.paymove.io/mcp",
+        "--header",
+        "X-API-KEY: ${PAYMOVE_API_KEY}"
+      ],
+      "env": {
+        "PAYMOVE_API_KEY": "YOUR_PAYMOVE_API_KEY"
+      }
+    }
+  }
+}

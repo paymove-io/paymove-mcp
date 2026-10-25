@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "paymove": {
+      "url": "https://mcp-api.paymove.io/mcp",
+      "headers": {
+        "X-API-KEY": "YOUR_PAYMOVE_API_KEY"
+      }
+    }
+  }
+}
