@@ -71,6 +71,8 @@ The first three go in environment variables. Never commit them and never expose 
 
 `{baseUrl}` below means the one that matches the key.
 
+The live Paymove MCP server (Streamable HTTP) is `https://api.paymove.io/api/mcp`. The same server is also available at `https://mcp-api.paymove.io/mcp`. Public catalog discovery (`search-public-products`, `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`) does not require a merchant `X-API-KEY`.
+
 ## Step 1 - Create the product (you do this for the user)
 
 The product is the merchant's store in paymove. Every payment is created inside it, and its `id` is `PAYMOVE_PRODUCT_ID`. One product per environment, created once. Full reference: https://docs.paymove.io/en/webhooks.md

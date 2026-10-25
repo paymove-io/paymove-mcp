@@ -22,12 +22,15 @@
 > 13. Do not pin a version of `@paymove-io/sdk` - install the latest.
 > 14. If the merchant has no `productId` yet, do not stop at a placeholder: ask for the API key, the `partnerId` and the shop name, propose defaults for `location` and `timezone` (`Europe/Warsaw`), offer the optional fields once, then create the product for them with `POST /api/product/pay` and take `productId` from `id` in the response. Do the same for the webhook: register it, then assign it to the product. Guided procedure: https://docs.paymove.io/skill.md (Steps 1-2).
 > 15. Full documentation index: https://docs.paymove.io/llms.txt · Copy-paste quickstart: https://docs.paymove.io/en/quickstart.md · Agent skill: https://docs.paymove.io/skill.md
+> 16. Paymove MCP (Streamable HTTP) primary endpoint: https://api.paymove.io/api/mcp (also https://mcp-api.paymove.io/mcp). Public discovery (`search-public-products`, `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`) does not require `X-API-KEY`.
 
 # Integracja z agentami AI
 
 > Jak skierować Cursor, Claude Code, Windsurf czy Lovable na dokumentację Paymove, żeby wdrożyły integrację samodzielnie.
 
 Dokumentacja Paymove jest przygotowana tak, by mógł z niej korzystać nie tylko człowiek, ale i agent AI piszący kod. Poniżej znajdziesz gotowe sposoby, żeby z tego skorzystać.
+
+Serwer MCP (Streamable HTTP) działa pod głównym adresem `https://api.paymove.io/api/mcp` (także `https://mcp-api.paymove.io/mcp`). Publiczne odkrywanie katalogu (`search-public-products`, `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`) nie wymaga klucza `X-API-KEY`.
 
 ## Zanim odpalisz agenta
 

@@ -1,15 +1,13 @@
-# Paymove MCP Server — Complete Reference of All 19 Tools
+# Paymove MCP Server — Complete Reference of All 20 Tools
 
-This document provides the complete technical reference for all **19 `@Tool` methods** across **4 categories** exposed by the production **Paymove MCP Server** (`paymove-mcp-server`, Streamable HTTP endpoint `https://mcp-api.paymove.io/mcp`).
+This document provides the complete technical reference for all **20 `@Tool` methods** across **4 categories** exposed by the production **Paymove MCP Server** (`paymove-mcp-server`, Streamable HTTP). Primary live endpoint: `https://api.paymove.io/api/mcp`. The same server is also available at `https://mcp-api.paymove.io/mcp`.
 
 ---
 
 ## Table of Contents
 
 1. [Conventions & Authentication Scope](#conventions--authentication-scope)
-2. [Category 1: General (`1 tool`)](#category-1-general-1-tool)
-   - [`list-partner-products`](#1-list-partner-products)
-3. [Category 2: Pay / DocPay & Payment Links (`7 tools`)](#category-2-pay--docpay--payment-links-7-tools)
+2. [Category 1: Pay / DocPay & Payment Links (`7 tools`)](#category-1-pay--docpay--payment-links-7-tools)
    - [`create-pay-product`](#2-create-pay-product)
    - [`create-subproduct`](#3-create-subproduct)
    - [`update-subproduct`](#4-update-subproduct)
@@ -17,7 +15,7 @@ This document provides the complete technical reference for all **19 `@Tool` met
    - [`add-pay-pricing-entry`](#6-add-pay-pricing-entry)
    - [`update-pay-pricing-entry`](#7-update-pay-pricing-entry)
    - [`delete-pay-pricing-entry`](#8-delete-pay-pricing-entry)
-4. [Category 3: Pay&Go — Tickets, Digital Goods & Self-Service (`8 tools`)](#category-3-paygo--tickets-digital-goods--self-service-8-tools)
+3. [Category 2: Pay&Go — Tickets, Digital Goods & Self-Service (`8 tools`)](#category-2-paygo--tickets-digital-goods--self-service-8-tools)
    - [`go-create-product`](#9-go-create-product)
    - [`go-add-ticket-option`](#10-go-add-ticket-option)
    - [`go-update-ticket-option`](#11-go-update-ticket-option)
@@ -26,10 +24,13 @@ This document provides the complete technical reference for all **19 `@Tool` met
    - [`go-get-product`](#14-go-get-product)
    - [`go-set-translations`](#15-go-set-translations)
    - [`go-generate-image`](#16-go-generate-image)
-5. [Category 4: Parking & Mobility (`3 tools`)](#category-4-parking--mobility-3-tools)
+4. [Category 3: Parking & Mobility (`3 tools`)](#category-3-parking--mobility-3-tools)
    - [`parking-create-product`](#17-parking-create-product)
    - [`parking-create-event`](#18-parking-create-event)
    - [`parking-get-pricing`](#19-parking-get-pricing)
+5. [Category 4: Public Discovery & Partner Catalog (`2 tools`)](#category-4-public-discovery--partner-catalog-2-tools)
+   - [`search-public-products`](#20-search-public-products)
+   - [`list-partner-products`](#1-list-partner-products)
 
 ---
 
@@ -39,48 +40,14 @@ This document provides the complete technical reference for all **19 `@Tool` met
   - `1000` = **10.00 PLN**
   - `3500` = **35.00 PLN**
   - `150000` = **1500.00 PLN**
-- **Tool Visibility (`tools/list`):**
-  - **Partner Mode (`X-API-KEY`):** Exposes the **19 Partner tools** (Categories 1–4: `General`, `Pay`, `Pay&Go`, `Parking`). Optional `X-SANDBOX-API-KEY` (`sk_test_...`) routes downstream operations to the Paymove Sandbox (`pay.sandbox.paymove.io` / `go.sandbox.paymove.io`).
-- **DTO Wrapping:** Tools using a request DTO take a top-level `request` object matching the schema below; tools with direct `@ToolParam` parameters (`list-partner-products`, `go-get-product`, `parking-get-pricing`) take parameters directly at the root of `arguments`.
+- **Tool Visibility (`tools/list`) / Authentication Modes:**
+  - **Public Discovery Mode (no headers required):** Exposes `search-public-products` and allows inspecting public product details and pricing (`go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`) so any consumer AI agent can discover and buy services without merchant credentials.
+  - **Partner Mode (`X-API-KEY`):** Exposes partner management tools across `Pay`, `Pay&Go`, and `Parking`, plus `list-partner-products`. Optional `X-SANDBOX-API-KEY` (`sk_test_...`) routes downstream operations to the Paymove Sandbox (`pay.sandbox.paymove.io` / `go.sandbox.paymove.io`). A merchant key is not required for public catalog discovery.
+- **DTO Wrapping:** Tools using a request DTO take a top-level `request` object matching the schema below; tools with direct `@ToolParam` parameters (`search-public-products`, `list-partner-products`, `go-get-product`, `parking-get-pricing`) take parameters directly at the root of `arguments`.
 
 ---
 
-## Category 1: General (`1 tool`)
-
-### 1. `list-partner-products`
-
-Lists existing products belonging to the authenticated partner filtered by canonical product type. Call this tool before creating sub-resources (such as a subproduct checkout under an existing `PAY` product) or when inspecting existing products.
-
-- **Service Class:** `GeneralToolService`
-- **Auth Scope:** Partner (`X-API-KEY`)
-
-#### Input Parameters (direct `@ToolParam`)
-
-| Parameter | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `productType` | `string` | **Yes** | Canonical product type for the current flow. Allowed values: `PAY`, `GO`, `PARKING` (case-insensitive). |
-
-#### Response JSON
-
-```json
-{
-  "partnerId": "c8f2b8a1-4d3c-4e12-9a01-123456789abc",
-  "productType": "PAY",
-  "count": 1,
-  "products": [
-    {
-      "productId": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "Legal Consultation",
-      "shortName": "legal-consultation",
-      "location": "Online"
-    }
-  ]
-}
-```
-
----
-
-## Category 2: Pay / DocPay & Payment Links (`7 tools`)
+## Category 1: Pay / DocPay & Payment Links (`7 tools`)
 
 ### 2. `create-pay-product`
 
@@ -179,11 +146,11 @@ Updates the price of an existing subproduct (checkout) under a `PAY` product, id
 
 ### 5. `list-pay-pricing-entries`
 
-Lists all pricing entries (price options) for an existing `PAY` product.
+Lists all pricing entries (price options) for an existing `PAY` product. Public catalog discovery: no merchant `X-API-KEY` is required.
 
 - **Service Class:** `PayToolService`
 - **DTO:** `ListPayPricingEntriesRequest` (passed under `request`)
-- **Auth Scope:** Partner (`X-API-KEY`)
+- **Auth Scope:** Public (No API Key Required)
 
 #### Input Parameters (`request`)
 
@@ -296,7 +263,7 @@ Permanently deletes a pricing entry from a `PAY` product.
 
 ---
 
-## Category 3: Pay&Go — Tickets, Digital Goods & Self-Service (`8 tools`)
+## Category 2: Pay&Go — Tickets, Digital Goods & Self-Service (`8 tools`)
 
 ### 9. `go-create-product`
 
@@ -474,10 +441,10 @@ Updates an existing `GO` product's layout (`viewType`, `imageDisplayType`), step
 
 ### 14. `go-get-product`
 
-Fetches a `GO` product along with all its ticket options (`pricing.options`) and its public `productLink`.
+Fetches a `GO` product along with all its ticket options (`pricing.options`) and its public `productLink`. Public catalog discovery: no merchant `X-API-KEY` is required.
 
 - **Service Class:** `GoToolService`
-- **Auth Scope:** Partner (`X-API-KEY`)
+- **Auth Scope:** Public (No API Key Required)
 
 #### Input Parameters (direct `@ToolParam`)
 
@@ -549,7 +516,7 @@ Generates an AI illustration/graphic for a `GO` ticket option and returns its ho
 
 ---
 
-## Category 4: Parking & Mobility (`3 tools`)
+## Category 3: Parking & Mobility (`3 tools`)
 
 ### 17. `parking-create-product`
 
@@ -641,10 +608,10 @@ Creates a special event (`EVENT`) or temporary tariff override (`PRICING_CHANGE`
 
 ### 19. `parking-get-pricing`
 
-Retrieves the current pricing configuration (tariff entries, active hours, daily/weekly caps, subscriptions, free tickets, and scheduled events) for a parking lot.
+Retrieves the current pricing configuration (tariff entries, active hours, daily/weekly caps, subscriptions, free tickets, and scheduled events) for a parking lot. Public catalog discovery: no merchant `X-API-KEY` is required.
 
 - **Service Class:** `ParkingToolService`
-- **Auth Scope:** Partner (`X-API-KEY`)
+- **Auth Scope:** Public (No API Key Required)
 
 #### Input Parameters (direct `@ToolParam`)
 
@@ -655,6 +622,88 @@ Retrieves the current pricing configuration (tariff entries, active hours, daily
 #### Response JSON
 
 Returns the full `ParkingGetPricingResponse` JSON object containing `entries`, `activeHours`, `maximumCostPerDay`, `maximumCostPerWeek`, `minimumCostPerDay`, `freeTimePerTicket`, `subscriptions`, `freeTickets`, and `events`.
+
+---
+
+## Category 4: Public Discovery & Partner Catalog (`2 tools`)
+
+Anyone can discover purchasable Paymove products and open a checkout without a merchant API key. `search-public-products` finds tickets, services, and parking zones. Pricing for a result can be inspected with `go-get-product`, `list-pay-pricing-entries`, or `parking-get-pricing` (also public). `list-partner-products` stays partner-scoped.
+
+### 20. `search-public-products`
+
+Searches and lists publicly available Paymove products (`GO` tickets/events, `PAY` checkouts/services, `PARKING` zones) that anyone or any AI agent can purchase. Requires **no merchant API key**.
+
+- **Service Class:** `GeneralToolService`
+- **Auth Scope:** Public (No API Key Required)
+
+#### Input Parameters (direct `@ToolParam`)
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `query` | `string` | No | Search phrase matched case-insensitively (`ILIKE`) against product `name`, `fullName`, `shortName`, or `location` (e.g., `"zoo"`, `"muzeum"`, `"lotnisko"`). |
+| `location` | `string` | No | City or location filter (case-insensitive `ILIKE`, e.g., `"Gdańsk"`, `"Kraków"`, `"Rzeszów"`). |
+| `productType` | `string` | No | Filter by product line: `'GO'`, `'PAY'`, or `'PARKING'`. Returns all active purchasable types when omitted. |
+
+#### Response JSON
+
+JSON array of active public products, plus `totalElements` and `totalPages`. Each product includes `productId`, `shortName`, `name`, `fullName`, `productType` (`GO` / `PAY` / `PARKING`), `location`, `timezone`, `currency`, and a direct purchase URL `productLink`:
+
+- `GO` → `https://go.paymove.io/{shortName}`
+- `PAY` → `https://pay.paymove.io/{shortName}`
+- `PARKING` → `https://parking.paymove.io/{shortName}`
+
+```json
+{
+  "totalElements": 1,
+  "totalPages": 1,
+  "products": [
+    {
+      "productId": "550e8400-e29b-41d4-a716-446655440000",
+      "shortName": "zoo-gdansk",
+      "name": "ZOO Gdańsk",
+      "fullName": "Gdańskie ZOO",
+      "productType": "GO",
+      "location": "Gdańsk",
+      "timezone": "Europe/Warsaw",
+      "currency": "PLN",
+      "productLink": "https://go.paymove.io/zoo-gdansk"
+    }
+  ]
+}
+```
+
+---
+
+### 1. `list-partner-products`
+
+Lists existing products belonging to the authenticated partner filtered by canonical product type. Call this tool before creating sub-resources (such as a subproduct checkout under an existing `PAY` product) or when inspecting existing products.
+
+- **Service Class:** `GeneralToolService`
+- **Auth Scope:** Partner (`X-API-KEY`)
+
+#### Input Parameters (direct `@ToolParam`)
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `productType` | `string` | **Yes** | Canonical product type for the current flow. Allowed values: `PAY`, `GO`, `PARKING` (case-insensitive). |
+
+#### Response JSON
+
+```json
+{
+  "partnerId": "c8f2b8a1-4d3c-4e12-9a01-123456789abc",
+  "productType": "PAY",
+  "count": 1,
+  "products": [
+    {
+      "productId": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Legal Consultation",
+      "shortName": "legal-consultation",
+      "location": "Online"
+    }
+  ]
+}
+```
 
 ---
 

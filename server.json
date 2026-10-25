@@ -12,11 +12,11 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://mcp-api.paymove.io/mcp",
+      "url": "https://api.paymove.io/api/mcp",
       "headers": [
         {
           "name": "X-API-KEY",
-          "description": "Paymove Partner API Key generated in https://panel.paymove.io (required for the 19 Partner tools: General, Pay, Pay&Go, Parking).",
+          "description": "Paymove Partner API Key generated in https://panel.paymove.io. Required for partner management tools (Pay, Pay&Go, Parking, and list-partner-products). Not required for public discovery (search-public-products, go-get-product, parking-get-pricing, list-pay-pricing-entries).",
           "isRequired": false,
           "isSecret": true
         },
