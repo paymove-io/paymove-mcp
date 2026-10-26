@@ -16,7 +16,7 @@
       "headers": [
         {
           "name": "X-API-KEY",
-          "description": "Paymove Partner API Key generated in https://panel.paymove.io. Required for partner management tools (Pay, Pay&Go, Parking, and list-partner-products). Not required for public discovery (search-public-products, go-get-product, parking-get-pricing, list-pay-pricing-entries).",
+          "description": "Paymove Partner API Key generated in https://panel.paymove.io. Required for all 19 partner tools (Pay, Pay&Go, Parking, and list-partner-products). Not required for public catalog discovery via search-public-products.",
           "isRequired": false,
           "isSecret": true
         },

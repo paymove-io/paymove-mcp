@@ -71,7 +71,7 @@ The first three go in environment variables. Never commit them and never expose 
 
 `{baseUrl}` below means the one that matches the key.
 
-The live Paymove MCP server (Streamable HTTP) is `https://api.paymove.io/api/mcp`. The same server is also available at `https://mcp-api.paymove.io/mcp`. Public catalog discovery (`search-public-products`, `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`) does not require a merchant `X-API-KEY`.
+The live Paymove MCP server (Streamable HTTP) is `https://api.paymove.io/api/mcp`. The same server is also available at `https://mcp-api.paymove.io/mcp`. Public catalog discovery (`search-public-products`) does not require a merchant `X-API-KEY`; partner tools (including `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`, and `list-partner-products`) require `X-API-KEY`.
 
 ## Step 1 - Create the product (you do this for the user)
 

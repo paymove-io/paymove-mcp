@@ -33,7 +33,7 @@ Kupuj bilety miejskie i opłacaj parkingi w całej Polsce przez agenta bez klucz
 
 ### 1. Tryb publiczny (bez klucza API)
 
-Każdy agent AI może wyszukiwać dostępne usługi w miastach, sprawdzać aktualne ceny biletów i parkingów oraz zwracać gotowy link do płatności (BLIK, Apple Pay, Google Pay, karty, PayPo).
+Bez klucza API bramka wystawia anonimowy JWT, a `tools/list` zwraca wyłącznie `search-public-products`. Każdy agent AI wyszukuje tym narzędziem aktywne usługi miejskie, bilety, parkingi i płatności w całej Polsce po nazwie, mieście albo typie (`GO`, `PARKING`, `PAY`) i dostaje bezpośredni link zakupowy (`productLink`) do opłacenia przez BLIK, Apple Pay, Google Pay, kartę albo PayPo. To samo narzędzie działa także z kluczem API.
 
 **Claude Code:**
 
@@ -57,7 +57,7 @@ claude mcp add --transport http paymove https://api.paymove.io/api/mcp
 
 ### 2. Tryb partnerski (z kluczem `X-API-KEY`)
 
-Aby tworzyć własne produkty, linki płatnicze, bilety i strefy parkingowe, wygeneruj klucz API w [panel.paymove.io](https://panel.paymove.io) i przekaż go w nagłówku `X-API-KEY`.
+Pozostałe **19** narzędzi wymaga klucza partnera: `list-partner-products` oraz każde narzędzie Pay, Pay&Go i Parking, w tym `go-get-product`, `parking-get-pricing` i `list-pay-pricing-entries`. Z nagłówkiem `X-API-KEY` `tools/list` zwraca wszystkie **20** narzędzi. Klucz generujesz w [panel.paymove.io](https://panel.paymove.io) i przekazujesz w nagłówku `X-API-KEY`.
 
 **Claude Code:**
 
@@ -769,26 +769,28 @@ Pełna specyfikacja parametrów znajduje się w [`docs/tools.md`](./docs/tools.m
 
 | Domena | Narzędzie | Autoryzacja | Opis |
 | :--- | :--- | :--- | :--- |
-| **Katalog** | `search-public-products` | Publiczne | Wyszukiwanie biletów, parkingów i usług po frazie, mieście lub typie (`GO`, `PARKING`, `PAY`) |
-| **Katalog** | `list-partner-products` | `X-API-KEY` | Lista produktów należących do konta partnera |
-| **Pay&Go** | `go-get-product` | Publiczne | Pobranie cennika biletów i bezpośredniego linku zakupowego dla produktu `GO` |
+| **Katalog** | `search-public-products` | Publiczne | Wyszukiwanie aktywnych produktów publicznych po `query` (nazwa, pełna nazwa, skrót, lokalizacja), `location` (miasto) i `productType` (`GO`, `PAY`, `PARKING`). Zwraca do 50 wyników: `count`, `totalElements` i `products` z `productLink` |
+| **Katalog** | `list-partner-products` | `X-API-KEY` | Lista produktów zalogowanego partnera dla wymaganego `productType` (`PAY`, `GO`, `PARKING`) |
+| **Pay&Go** | `go-get-product` | `X-API-KEY` | Pobranie cennika biletów i bezpośredniego linku zakupowego dla produktu `GO` |
 | **Pay&Go** | `go-create-product` | `X-API-KEY` | Utworzenie nowej strony biletowej lub produktowej (`go.paymove.io/{id}`) |
 | **Pay&Go** | `go-add-ticket-option` | `X-API-KEY` | Dodanie nowego wariantu biletu do produktu `GO` |
 | **Pay&Go** | `go-update-ticket-option` | `X-API-KEY` | Aktualizacja wariantu biletu na produkcie `GO` |
 | **Pay&Go** | `go-delete-ticket-option` | `X-API-KEY` | Usunięcie wariantu biletu z produktu `GO` |
-| **Pay&Go** | `go-update-product` | `X-API-KEY` | Aktualizacja ustawień wyświetlania i listy biletów produktu `GO` |
+| **Pay&Go** | `go-update-product` | `X-API-KEY` | Aktualizacja układu, ustawień wyświetlania, nagłówków kroków lub linku na podsumowaniu produktu `GO` |
 | **Pay&Go** | `go-set-translations` | `X-API-KEY` | Ustawienie tłumaczeń językowych (`pl-PL`, `en-US`, `de-DE`, `uk-UA`) |
 | **Pay&Go** | `go-generate-image` | `X-API-KEY` | Wygenerowanie ilustracji AI dla produktu `GO` |
-| **Parking** | `parking-get-pricing` | Publiczne | Pobranie stawek godzinowych, darmowego czasu i limitów dobowych parkingu |
+| **Parking** | `parking-get-pricing` | `X-API-KEY` | Pobranie stawek godzinowych, darmowego czasu i limitów dobowych parkingu |
 | **Parking** | `parking-create-product` | `X-API-KEY` | Utworzenie strefy płatnego parkowania (`park.paymove.io/{id}`) |
-| **Parking** | `parking-create-event` | `X-API-KEY` | Zaplanowanie taryfy wydarzeniowej lub czasowego wyłączenia parkingu |
-| **Pay** | `list-pay-pricing-entries` | Publiczne | Pobranie opcji cenowych skonfigurowanych na linku płatniczym `PAY` |
+| **Parking** | `parking-create-event` | `X-API-KEY` | Zaplanowanie taryfy wydarzeniowej (`EVENT`) lub czasowej zmiany cennika (`PRICING_CHANGE`) dla parkingu |
+| **Pay** | `list-pay-pricing-entries` | `X-API-KEY` | Pobranie opcji cenowych skonfigurowanych na linku płatniczym `PAY` |
 | **Pay** | `create-pay-product` | `X-API-KEY` | Utworzenie linku płatniczego (`pay.paymove.io/{id}`) |
 | **Pay** | `create-subproduct` | `X-API-KEY` | Utworzenie transakcji checkout dla zamówienia (`externalId`) i zwrócenie `redirectUrl` |
 | **Pay** | `update-subproduct` | `X-API-KEY` | Aktualizacja kwoty istniejącej transakcji checkout |
 | **Pay** | `add-pay-pricing-entry` | `X-API-KEY` | Dodanie pozycji cennika do produktu `PAY` |
 | **Pay** | `update-pay-pricing-entry` | `X-API-KEY` | Aktualizacja pozycji cennika na produkcie `PAY` |
 | **Pay** | `delete-pay-pricing-entry` | `X-API-KEY` | Usunięcie pozycji cennika z produktu `PAY` |
+
+`search-public-products` jest jedynym narzędziem w `PUBLIC_TOOLS`. Działa na anonimowym JWT z bramki oraz z kluczem partnera. Produkt w odpowiedzi niesie `productId`, `name`, `fullName`, `shortName`, `productType`, `location`, `currency` i `productLink`. Publiczne cenniki poza protokołem MCP pozostają dostępne bez klucza pod `GET https://api.paymove.io/api/go/product/{id}/pricing`, `GET https://api.paymove.io/api/parking/product/{id}/pricing` i `GET https://api.paymove.io/api/product/{id}/public`.
 
 <br />
 
