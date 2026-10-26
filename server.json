@@ -1,0 +1,32 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.paymove/paymove-mcp",
+  "title": "Paymove MCP Server",
+  "description": "Official Paymove MCP server for payment links, checkouts, Pay&Go tickets, and parking zones.",
+  "version": "1.0.0",
+  "websiteUrl": "https://paymove.io",
+  "repository": {
+    "url": "https://github.com/paymove-io/paymove-mcp",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.paymove.io/api/mcp",
+      "headers": [
+        {
+          "name": "X-API-KEY",
+          "description": "Paymove Partner API Key generated in https://panel.paymove.io. Required for all 19 partner tools (Pay, Pay&Go, Parking, and list-partner-products). Not required for public catalog discovery via search-public-products.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "X-SANDBOX-API-KEY",
+          "description": "Optional Paymove Sandbox API Key (starts with sk_test_) to route operations to the Paymove Sandbox environment.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
