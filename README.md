@@ -794,6 +794,30 @@ Full parameter schemas are in [`docs/tools.md`](./docs/tools.md). All monetary a
 
 <br />
 
+### Planned tools (Planned / Planowane)
+
+These 11 tools are a contract draft. They are **not implemented**, they are **not** part of the 20 tools above, and they do **not** appear in `tools/list`. Do not call them until the name shows up there. Specs: [`docs/tools.md`](./docs/tools.md#planned-tools). Which product type to use: [`docs/use-cases.md`](./docs/use-cases.md) · [`docs/use-cases.pl.md`](./docs/use-cases.pl.md).
+
+A new offer is still `PAY`, `GO`, or `PARKING`. Tickets use the live `go-create-product` flow. Parking uses the live `parking-create-product` flow. A service with no date, and an appointment book, use the live `create-pay-product` flow. The draft adds slots, webhook wrappers, a parking tariff edit, and a visibility flag. It does not add a product type.
+
+| Tool | Access | Auth | What the draft specifies |
+| :--- | :--- | :--- | :--- |
+| `set-availability` | Write | `X-API-KEY` | Slots (`start`, `end`, `capacity`, optional `resource`, timezone `Europe/Warsaw`) on a `GO` ticket option or a `PAY` pricing entry |
+| `list-availability` | Read | Public when the product is searchable; partner key otherwise | Remaining seats. Public only for an active, public product of a KYC-verified partner |
+| `create-reservation` | Write | `X-API-KEY` | Atomic hold (proposed TTL 600s), idempotent on `externalId`. Price is computed on the server. Returns `reservationId` and checkout `redirectUrl` |
+| `get-reservation` | Read | `X-API-KEY` | Hold status. `confirmed` is true only after payment `COMPLETED` |
+| `cancel-reservation` | Write | `X-API-KEY` | Releases a `HELD` seat. Does not refund a confirmed booking |
+| `register-webhook` | Write | `X-API-KEY` | Mirrors `POST /api/pay/plugin/webhook` (`name`, `endpoint`, `method` `POST`, `expectedCode`, `retries`, `type` `PAYMENT`) |
+| `assign-webhook-to-product` | Write | `X-API-KEY` | Mirrors `POST /api/pay/plugin/webhook/{webhookId}/products/{productId}` |
+| `list-product-webhooks` | Read | `X-API-KEY` | Mirrors `GET /api/pay/plugin/webhook/{webhookId}/products` |
+| `parking-update-pricing` | Write | `X-API-KEY` | Replaces the base tariff. Canonical entries: `cost` in grosze, ISO-8601 `duration`, `repeatable`, `partialCost` |
+| `set-product-visibility` | Write | `X-API-KEY` | `public` or `hidden` |
+| `get-product-status` | Read | `X-API-KEY` | Status, visibility, KYC flag, and whether search would return the product |
+
+`search-public-products` stays the live catalog tool. The draft says a product is listed only when it is `ACTIVE`, visibility is `public`, and the partner has finished KYC in [panel.paymove.io](https://panel.paymove.io). That filter is not a new field on the live tool. Webhook registration over REST works today; the three webhook rows above are the MCP wrappers and are still planned. Verify `X-Paymove-Signature` before fulfilling, and fulfil only on `COMPLETED`.
+
+<br />
+
 ---
 
 <br />

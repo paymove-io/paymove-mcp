@@ -2,6 +2,8 @@
 
 This document provides the complete technical reference for all **20 tools** across **4 categories** exposed by the production **Paymove MCP Server** (`paymove-mcp-server`, Streamable HTTP). Primary live endpoint: `https://api.paymove.io/api/mcp`. The same server is also available at `https://mcp-api.paymove.io/mcp`.
 
+The live server exposes these **20 tools**. The [Planned tools](#planned-tools) section below is a separate contract draft (**Planned / Planowane**). Those tools are not implemented, they are not included in the count of 20, and they do not appear in `tools/list`.
+
 ---
 
 ## Table of Contents
@@ -31,6 +33,18 @@ This document provides the complete technical reference for all **20 tools** acr
 5. [Category 4: Public Discovery & Partner Catalog (`2 tools`)](#category-4-public-discovery--partner-catalog-2-tools)
    - [`search-public-products`](#20-search-public-products)
    - [`list-partner-products`](#1-list-partner-products)
+6. [Planned tools (Planned / Planowane — not in `tools/list`)](#planned-tools)
+   - [`set-availability`](#p1-set-availability)
+   - [`list-availability`](#p2-list-availability)
+   - [`create-reservation`](#p3-create-reservation)
+   - [`get-reservation`](#p4-get-reservation)
+   - [`cancel-reservation`](#p5-cancel-reservation)
+   - [`register-webhook`](#p6-register-webhook)
+   - [`assign-webhook-to-product`](#p7-assign-webhook-to-product)
+   - [`list-product-webhooks`](#p8-list-product-webhooks)
+   - [`parking-update-pricing`](#p9-parking-update-pricing)
+   - [`set-product-visibility`](#p10-set-product-visibility)
+   - [`get-product-status`](#p11-get-product-status)
 
 ---
 
@@ -632,6 +646,8 @@ Returns JSON containing `entries`, `activeHours`, `maximumCostPerDay`, `maximumC
 
 `search-public-products` is the only MCP tool that runs without an API key. It finds active `GO`, `PAY`, and `PARKING` products and returns a direct `productLink`. The other 19 tools require `X-API-KEY: <YOUR_PAYMOVE_API_KEY>`. `list-partner-products` returns up to 100 products belonging to the authenticated partner account.
 
+The intended catalog rule, once [P10 `set-product-visibility`](#p10-set-product-visibility) and [P11 `get-product-status`](#p11-get-product-status) ship, is that a product appears here only when its status is `ACTIVE`, its visibility is `public`, and the owning partner has finished KYC in [panel.paymove.io](https://panel.paymove.io). That rule is **Planned / Planowane**. It does not add fields to this live tool, and it does not change the response documented below.
+
 ### 20. `search-public-products`
 
 Searches active public Paymove products (`GO` tickets and attractions, `PAY` payments and services, `PARKING` zones) and returns direct purchase links. No API key is required. The tool also works when `X-API-KEY` is set. Results are limited to 50 products, sorted by name ascending.
@@ -737,4 +753,595 @@ Lists up to 100 products belonging to the authenticated partner account, filtere
 | `products[].name` | `string` | Product name. |
 | `products[].shortName` | `string` | Present only when non-null. |
 | `products[].location` | `string` | Present only when non-null. |
+
+---
+
+## Planned tools
+
+> **Status: Planned / Planowane.** None of the tools in this section exist on the server. They are absent from `tools/list` on `https://api.paymove.io/api/mcp` and `https://mcp-api.paymove.io/mcp`. They are not part of the 20 live tools. An agent must not call them, must not invent a success response, and must not tell the user the call worked. Call a tool from this section only after its name appears in `tools/list`.
+
+This section is the contract draft for partners who have finished KYC in [panel.paymove.io](https://panel.paymove.io) and want to add and run offers through MCP. A new partner product is always an instance of `PAY`, `GO`, or `PARKING`. This draft does not add a product type, and it does not add a second create tool. Tickets keep using `go-create-product`. Parking keeps using `parking-create-product`. A service without a date, and an appointment book, keep using `create-pay-product` plus pricing entries.
+
+End-to-end sequences, with synthetic names, are in [docs/use-cases.md](./use-cases.md) and [docs/use-cases.pl.md](./use-cases.pl.md). Call payloads are in [`examples/planned/`](../examples/planned/).
+
+### Planned conventions
+
+- **Monetary amounts** stay integers in grosze. `1000` = 10.00 PLN. Never send a float. There is no currency field.
+- **Authentication** uses `X-API-KEY`. Optional `X-SANDBOX-API-KEY` (`sk_test_...`) routes the call to the Paymove Sandbox, same as the live partner tools. Do not send `Authorization: Bearer`. Do not send an `Idempotency-Key` header.
+- **Server-side only.** The key stays off the merchant page.
+- **Arguments.** Write tools take a top-level `request` object. `list-availability`, `get-reservation`, `list-product-webhooks`, and `get-product-status` take their fields directly in `arguments`, same as `go-get-product` and `parking-get-pricing`.
+- **Errors** use `{"status": <int>, "error": "<CODE>", "message": "<text>"}`. Branch on `status`. `error` is the stable code in this draft. `message` is for humans and is not a stable API. A live REST failure, where these tools mirror REST, stays `{"status": <int>, "message": "<text>"}`; the MCP layer adds `error` when it maps that failure.
+- **Read / write** is marked on every tool as **Access**. Read tools do not create or mutate offers, holds, webhooks, tariffs, or visibility.
+
+| `status` | `error` | When |
+| :--- | :--- | :--- |
+| `400` | `INVALID_REQUEST` | Missing required field, bad UUID, `end` not after `start`, `capacity` not an integer ≥ 0, `method` other than `POST`, `visibility` other than `public` or `hidden`, `retries` < 1. |
+| `400` | `PRICE_NOT_ACCEPTED` | `create-reservation` included `price` or `amount`. The server computes the price. |
+| `400` | `PRICE_NOT_FIXED` | The attached entry has `userDefinedAmount: true`, or the computed price is not a positive integer. The hold is not taken. |
+| `400` | `ENTRIES_NOT_CANONICAL` | `parking-update-pricing` received the shorthand array. Send the indexed object map. |
+| `401` | `INVALID_API_KEY` | Missing or wrong `X-API-KEY` on a partner tool. |
+| `403` | `ACCESS_DENIED` | The product, entry, reservation, or webhook belongs to another partner. |
+| `404` | `NOT_FOUND` | Unknown product, entry, slot, reservation, or webhook for an authenticated partner. |
+| `404` | `PRODUCT_NOT_AVAILABLE` | Public `list-availability` for a product that is not searchable. |
+| `409` | `SLOT_OVERLAP` | The slot overlaps another slot for the same `resource`. Nothing is written. |
+| `409` | `SLOT_FULL` | Remaining capacity is lower than `quantity`. No hold is taken. |
+| `409` | `SLOT_HAS_RESERVATIONS` | A replace would drop a slot that still has a `HELD` or `COMPLETED` reservation. |
+| `409` | `CAPACITY_BELOW_RESERVED` | New `capacity` is lower than held plus completed seats on that slot. |
+| `409` | `EXTERNAL_ID_CONFLICT` | `externalId` already belongs to a different reservation or subproduct. |
+| `409` | `RESERVATION_COMPLETED` | `cancel-reservation` on a confirmed reservation. No refund is started. |
+| `409` | `RESERVATION_EXPIRED` | `cancel-reservation` on an expired hold. Capacity was already released. |
+
+### What a partner product is
+
+| Offer | Product type | Live create tool | Sellable unit the new tools attach to |
+| :--- | :--- | :--- | :--- |
+| Event tickets, workshops, timed entry | `GO` | `go-create-product`, then `go-add-ticket-option` | `targetType: "GO_TICKET"` and that option's `entryId` |
+| Paid parking | `PARKING` | `parking-create-product` | No slots. Edit the base tariff with `parking-update-pricing`. Temporary overrides stay on `parking-create-event`. |
+| Service with no date (a fee, a package, a translation) | `PAY` | `create-pay-product`, then `add-pay-pricing-entry` | No slots. Checkout stays on `create-subproduct` or the public pay link. |
+| Appointment with time slots (hairdresser, a visit) | `PAY` | `create-pay-product` with `price: 0` when each service has its own entry, then `add-pay-pricing-entry` | `targetType: "PAY_ENTRY"` and that entry's `entryId` |
+
+KYC stays in the panel. No planned tool submits KYC.
+
+### Availability and reservations
+
+Slots attach to an existing `GO` ticket option or an existing `PAY` pricing entry. They are not a product. `PARKING` does not take slots.
+
+A slot is a half-open local interval `[start, end)` in an IANA timezone. `start` and `end` use `yyyy-MM-ddTHH:mm:ss` with no offset, the same local form as `parking-create-event`. The default timezone is `Europe/Warsaw`.
+
+`capacity` is the number of seats on that slot. Remaining seats are `capacity` minus reservations in `HELD` or `COMPLETED`. An expired or canceled hold does not consume a seat.
+
+`resource` is an optional label the partner chooses (a stylist, a room, a chair), for example `"stylist-a"`. On one product, the same non-empty `resource` cannot have overlapping intervals, including across two entries, so one person is not booked twice. Slots with no `resource` compete only with other resourceless slots on the same `entryId`.
+
+**Anti double-sell.** `create-reservation` locks the slot, checks remaining capacity, inserts the hold, and creates the checkout in one transaction. Two callers who take the last seat: one receives the hold, the other receives `409` `SLOT_FULL`. A repeat with the same `externalId` and the same slot does not take a second seat.
+
+**Hold and TTL.** A new reservation is `HELD`. The proposed default TTL is **600 seconds** (10 minutes). The caller may send `ttlSeconds` from **60** to **900**. `expiresAt` is an absolute instant. When the clock passes `expiresAt` and the status is still `HELD`, the status becomes `EXPIRED` and the seats return to the pool. A `COMPLETED` reservation is never expired by the TTL job.
+
+**Idempotency.** The idempotency key is `externalId`, unique per product, the same identifier the subproduct uses. The same `externalId` with the same `entryId`, slot, and `quantity` returns the original `reservationId` and `redirectUrl` and sets `idempotentReplay` to `true`. A different slot or quantity for that `externalId` is `409` `EXTERNAL_ID_CONFLICT`. Do not send `Idempotency-Key`.
+
+**Server-side price.** `create-reservation` has no `price` and no `amount`. The server reads the attached entry (`GO` ticket `price`, or `PAY` pricing-entry `price`) and sets the checkout amount to `entry.price * quantity`, in grosze. Sending `price` or `amount` is `400` `PRICE_NOT_ACCEPTED`. An entry with `userDefinedAmount: true`, or a computed amount that is not a positive integer, is `400` `PRICE_NOT_FIXED` and takes no hold. The checkout is the existing subproduct flow: `redirectUrl` is `https://checkout.paymove.io/{productId}?externalId={10charHash}` (sandbox: `https://checkout.sandbox.paymove.io/{productId}?externalId={10charHash}`). The query value is Paymove's 10-character hash. The caller does not call `create-subproduct` for a slotted entry; that call would skip the hold.
+
+**Confirmation.** Status `HELD` is a hold, not a booking. The customer opening `returnUrl` does not confirm anything. The reservation becomes `COMPLETED` only when the payment for that `externalId` reaches `COMPLETED`. The partner fulfils (email, calendar, ticket) only in the webhook handler, after verifying `X-Paymove-Signature`. There is no tool that sets `COMPLETED` by hand. `get-reservation` reports `confirmed: true` only for status `COMPLETED`.
+
+Reservation status values: `HELD`, `EXPIRED`, `COMPLETED`, `CANCELED`.
+
+### P1. `set-availability`
+
+> **Status:** Planned / Planowane — not implemented, absent from `tools/list`.
+
+Replaces or upserts bookable slots on one existing `GO` ticket option or one existing `PAY` pricing entry.
+
+- **Auth Scope:** Partner (`X-API-KEY`, optional `X-SANDBOX-API-KEY`)
+- **Access:** Write
+
+#### Input Parameters (`request`)
+
+| Field | Type | Required | Constraints / Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `targetType` | `string` | **Yes** | `GO_TICKET` or `PAY_ENTRY` | Which sellable unit the slots belong to. |
+| `productId` | `string` | **Yes** | UUID | `GO` product from `go-create-product`, or `PAY` product from `create-pay-product`. Must belong to the authenticated partner. |
+| `entryId` | `string` | **Yes** | UUID | Ticket `entryId` from `go-add-ticket-option` / `go-get-product`, or pricing `entryId` from `add-pay-pricing-entry` / `list-pay-pricing-entries`. |
+| `timezone` | `string` | No | Default: `'Europe/Warsaw'` | IANA timezone for `start` and `end`. |
+| `mode` | `string` | No | Default: `'upsert'` | `'upsert'` or `'replace'`. |
+| `replaceFrom` | `string` | No | Local `yyyy-MM-ddTHH:mm:ss` | Used when `mode` is `'replace'`. Slots that start before this instant are kept. Default: the current time in `timezone`. |
+| `slots` | `array` | **Yes** | At least one object | Slot objects. See the next table. |
+
+Each element of `slots`:
+
+| Field | Type | Required | Constraints / Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `start` | `string` | **Yes** | `yyyy-MM-ddTHH:mm:ss`, no offset | Inclusive local start. |
+| `end` | `string` | **Yes** | Same form, strictly after `start` | Exclusive local end. |
+| `capacity` | `integer` | **Yes** | Integer ≥ 0 | Seats on this slot. `0` closes it. |
+| `resource` | `string` | No | Omit or non-empty string | Staff, room, or chair label. |
+
+`upsert` matches an existing slot by `(entryId, start, end, resource)` and updates `capacity`. Other slots stay. `replace` makes the submitted list the full set of slots for this `entryId` that start at or after `replaceFrom`. A slot that still has a `HELD` or `COMPLETED` reservation cannot be removed, and its capacity cannot drop below the reserved seats. On `SLOT_OVERLAP`, `SLOT_HAS_RESERVATIONS`, or `CAPACITY_BELOW_RESERVED` the call writes nothing.
+
+#### Response JSON
+
+```json
+{
+  "productId": "550e8400-e29b-41d4-a716-446655440000",
+  "entryId": "9f8e7d6c-5b4a-3210-fedc-ba9876543210",
+  "targetType": "PAY_ENTRY",
+  "timezone": "Europe/Warsaw",
+  "mode": "upsert",
+  "slotsWritten": 2
+}
+```
+
+#### Error example
+
+```json
+{
+  "status": 409,
+  "error": "SLOT_OVERLAP",
+  "message": "Resource stylist-a already has a slot overlapping 2026-11-20T10:00:00/2026-11-20T10:30:00."
+}
+```
+
+---
+
+### P2. `list-availability`
+
+> **Status:** Planned / Planowane — not implemented, absent from `tools/list`.
+
+Lists slots and remaining seats for one product. Usable without an API key when the product is searchable (active, public, and the partner has finished KYC). With `X-API-KEY`, the partner can also list their own hidden products.
+
+- **Auth Scope:** Public for a searchable product. Partner (`X-API-KEY`, optional `X-SANDBOX-API-KEY`) for the caller's own products, including hidden ones.
+- **Access:** Read
+
+#### Input Parameters
+
+| Parameter | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `productId` | `string` | **Yes** | — | Product UUID. |
+| `entryId` | `string` | No | All entries that have slots | Limit the list to one ticket option or one pricing entry. |
+| `from` | `string` | No | Now, in `timezone` | Local `yyyy-MM-ddTHH:mm:ss`. Slots that end at or before `from` are omitted. |
+| `to` | `string` | No | `from` plus 31 days | Local exclusive upper bound on `start`. |
+| `resource` | `string` | No | All resources | Filter to one resource label. |
+| `timezone` | `string` | No | `'Europe/Warsaw'` | Zone used to interpret `from` and `to`. |
+
+A public caller who asks for a product that is missing, hidden, inactive, or owned by a partner without KYC receives `404` `PRODUCT_NOT_AVAILABLE`. The body does not say which of those applies.
+
+The public response contains slots only. It does not contain customer data, reservation ids, or `externalId` values. `remaining` counts `HELD` and `COMPLETED` seats as taken.
+
+#### Response JSON
+
+```json
+{
+  "productId": "550e8400-e29b-41d4-a716-446655440000",
+  "timezone": "Europe/Warsaw",
+  "count": 1,
+  "slots": [
+    {
+      "entryId": "9f8e7d6c-5b4a-3210-fedc-ba9876543210",
+      "targetType": "PAY_ENTRY",
+      "start": "2026-11-20T10:00:00",
+      "end": "2026-11-20T10:30:00",
+      "resource": "stylist-a",
+      "capacity": 1,
+      "remaining": 1
+    }
+  ]
+}
+```
+
+---
+
+### P3. `create-reservation`
+
+> **Status:** Planned / Planowane — not implemented, absent from `tools/list`.
+
+Atomically holds seats on one existing slot and opens a checkout through the existing subproduct flow. The price is computed on the server from the attached entry. The reservation is confirmed only after the payment reaches `COMPLETED`.
+
+- **Auth Scope:** Partner (`X-API-KEY`, optional `X-SANDBOX-API-KEY`)
+- **Access:** Write
+
+#### Input Parameters (`request`)
+
+| Field | Type | Required | Constraints / Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `targetType` | `string` | **Yes** | `GO_TICKET` or `PAY_ENTRY` | Must match the entry the slot was attached to. |
+| `productId` | `string` | **Yes** | UUID | Parent product. |
+| `entryId` | `string` | **Yes** | UUID | Ticket option or pricing entry that owns the slot. |
+| `start` | `string` | **Yes** | `yyyy-MM-ddTHH:mm:ss` | Must match a slot `start` exactly. |
+| `end` | `string` | **Yes** | `yyyy-MM-ddTHH:mm:ss` | Must match that slot's `end` exactly. |
+| `resource` | `string` | No | Required when the slot has a resource | Resource label of the slot. Omit for a resourceless slot. |
+| `quantity` | `integer` | No | Default: `1`; integer ≥ 1 | Seats to hold. Must be ≤ remaining. |
+| `externalId` | `string` | **Yes** | Non-empty, unique per product | Idempotency key and the subproduct `externalId`. |
+| `returnUrl` | `string` | **Yes** | Absolute `https` URL | Passed through as the subproduct `details.returnUrl`. A visit here does not confirm the reservation. |
+| `ttlSeconds` | `integer` | No | Default: `600`; min `60`; max `900` | Hold length. Proposed bounds, see the open questions in the use-case guide. |
+| `email` | `string` | No | Optional | Customer email stored on the checkout. |
+| `locale` | `string` | No | Default: `'pl-PL'` | Checkout locale. |
+| `description` | `string` | No | Defaults to the entry title or description | Text shown on the checkout. |
+
+Do not send `price`, `amount`, or `Idempotency-Key`. The server multiplies the entry price by `quantity`.
+
+#### Response JSON
+
+```json
+{
+  "reservationId": "c1d2e3f4-a5b6-4789-8abc-def012345678",
+  "externalId": "APT-1001",
+  "status": "HELD",
+  "confirmed": false,
+  "quantity": 1,
+  "price": 8000,
+  "ttlSeconds": 600,
+  "expiresAt": "2026-11-20T09:10:00+01:00",
+  "idempotentReplay": false,
+  "redirectUrl": "https://checkout.paymove.io/550e8400-e29b-41d4-a716-446655440000?externalId=ab12cd34ef",
+  "slot": {
+    "entryId": "9f8e7d6c-5b4a-3210-fedc-ba9876543210",
+    "start": "2026-11-20T10:00:00",
+    "end": "2026-11-20T10:30:00",
+    "resource": "stylist-a",
+    "remaining": 0
+  }
+}
+```
+
+`price` is grosze (`8000` = 80.00 PLN) and is the amount the server put on the subproduct. `redirectUrl` uses the live checkout host. Fulfilment waits for a verified webhook with `status: "COMPLETED"`.
+
+#### Error example
+
+```json
+{
+  "status": 409,
+  "error": "SLOT_FULL",
+  "message": "No remaining capacity for this slot."
+}
+```
+
+---
+
+### P4. `get-reservation`
+
+> **Status:** Planned / Planowane — not implemented, absent from `tools/list`.
+
+Reads one reservation. `confirmed` is `true` only when `status` is `COMPLETED`.
+
+- **Auth Scope:** Partner (`X-API-KEY`, optional `X-SANDBOX-API-KEY`)
+- **Access:** Read
+
+#### Input Parameters
+
+Send `reservationId`, or send both `productId` and `externalId`.
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `reservationId` | `string` | One of this or the pair below | Reservation UUID from `create-reservation`. |
+| `productId` | `string` | With `externalId` | Parent product UUID. |
+| `externalId` | `string` | With `productId` | The idempotency key sent to `create-reservation`. |
+
+#### Response JSON
+
+```json
+{
+  "reservationId": "c1d2e3f4-a5b6-4789-8abc-def012345678",
+  "productId": "550e8400-e29b-41d4-a716-446655440000",
+  "entryId": "9f8e7d6c-5b4a-3210-fedc-ba9876543210",
+  "targetType": "PAY_ENTRY",
+  "externalId": "APT-1001",
+  "status": "HELD",
+  "paymentStatus": "PENDING",
+  "confirmed": false,
+  "quantity": 1,
+  "price": 8000,
+  "expiresAt": "2026-11-20T09:10:00+01:00",
+  "redirectUrl": "https://checkout.paymove.io/550e8400-e29b-41d4-a716-446655440000?externalId=ab12cd34ef",
+  "slot": {
+    "start": "2026-11-20T10:00:00",
+    "end": "2026-11-20T10:30:00",
+    "resource": "stylist-a"
+  }
+}
+```
+
+`paymentStatus` is the subproduct status (`INITIALIZED`, `PENDING`, `COMPLETED`, `CANCELED`, `ERROR`, `REFUNDED`) or `null` before the checkout exists. `status` is the reservation. A payment that reaches `COMPLETED` after the hold has already become `EXPIRED` does not set `confirmed` to `true`; the seat may already belong to someone else.
+
+---
+
+### P5. `cancel-reservation`
+
+> **Status:** Planned / Planowane — not implemented, absent from `tools/list`.
+
+Releases a hold that is still `HELD`. A second cancel of the same `CANCELED` reservation returns the same body and does not change capacity again.
+
+- **Auth Scope:** Partner (`X-API-KEY`, optional `X-SANDBOX-API-KEY`)
+- **Access:** Write
+
+#### Input Parameters (`request`)
+
+| Field | Type | Required | Constraints / Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `reservationId` | `string` | **Yes** | UUID | Reservation to cancel. |
+| `reason` | `string` | No | Optional | Partner note stored on the reservation. It does not start a refund. |
+
+`HELD` becomes `CANCELED` and the seats return to the slot. `EXPIRED` returns `409` `RESERVATION_EXPIRED`. `COMPLETED` returns `409` `RESERVATION_COMPLETED` and does not refund. Refunds stay on the payment API.
+
+#### Response JSON
+
+```json
+{
+  "reservationId": "c1d2e3f4-a5b6-4789-8abc-def012345678",
+  "status": "CANCELED",
+  "confirmed": false,
+  "releasedQuantity": 1
+}
+```
+
+---
+
+### Webhooks
+
+These three tools mirror the live webhook REST API. Until they appear in `tools/list`, register and assign webhooks with REST, as in [SKILL.md](../SKILL.md) Step 2. REST today:
+
+- `POST /api/pay/plugin/webhook`
+- `POST /api/pay/plugin/webhook/{webhookId}/products/{productId}` (no body)
+- `GET /api/pay/plugin/webhook/{webhookId}/products`
+
+Reference: https://docs.paymove.io/en/webhooks.md and https://docs.paymove.io/en/webhook-signature.md.
+
+Signature reminder, for every webhook these tools register: Paymove sends `X-Paymove-Signature: t=<unix>,v1=<base64>`. Verify HMAC-SHA256 over `"{timestamp}.{raw_body}"` with the full `whsec_…` secret as the UTF-8 key. Reject a timestamp older than 300 seconds. Compare with a length check before a constant-time compare. Read the raw body. Respond with the HTTP status equal to `expectedCode` (use `200`). Fulfil only after that check, and only when `status` is `COMPLETED`. A hit on `returnUrl` is not payment. Webhooks fire on terminal statuses; a reservation is confirmed only by `COMPLETED`.
+
+The live REST docs mark webhook `type: "PAYMENT"` as deprecated and tell new integrations to send `type: "TRANSACTION"` (payments and refunds). This draft accepts both. The example below uses `PAYMENT`, which is the type this contract was asked to mirror. Which value the shipped tool should default to is an open question. Omit `requestTemplate` to receive the default payload.
+
+`signingSecret` is returned once, by `register-webhook`. The list tool does not return it. Store it as `PAYMOVE_WEBHOOK_SECRET`. The examples use a placeholder, not a real secret.
+
+### P6. `register-webhook`
+
+> **Status:** Planned / Planowane — not implemented, absent from `tools/list`.
+
+Registers a webhook. Mirrors `POST /api/pay/plugin/webhook`.
+
+- **Auth Scope:** Partner (`X-API-KEY`, optional `X-SANDBOX-API-KEY`)
+- **Access:** Write
+
+#### Input Parameters (`request`)
+
+| Field | Type | Required | Constraints / Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `name` | `string` | **Yes** | Non-empty string | Webhook name, for example `'OrderPaymentHook'`. |
+| `endpoint` | `string` | **Yes** | Absolute `https` URL | Public URL Paymove will call. |
+| `method` | `string` | **Yes** | Must be `'POST'` | HTTP method. Any other value is `400`. |
+| `expectedCode` | `integer` | **Yes** | HTTP status, typically `200` | Delivery succeeds only when the endpoint returns this status. |
+| `retries` | `integer` | **Yes** | Integer ≥ 1, typically `3` | Extra attempts after the first delivery. |
+| `type` | `string` | **Yes** | `'PAYMENT'` or `'TRANSACTION'` | `PAYMENT` matches the mirrored example. Live REST recommends `TRANSACTION`. |
+| `partnerId` | `string` | **Yes** | UUID | Partner id assigned by Paymove. The agent asks the user. It is not guessed. |
+| `headers` | `object` | No | Default: `{"Content-Type": ["application/json"]}` | Headers Paymove sends to `endpoint`. Values are string arrays, as in REST. |
+| `requestTemplate` | `object` | No | Omit for the full default payload | Template object. Do not send the string `"null"`. |
+
+#### Response JSON
+
+```json
+{
+  "webhookId": "11112222-3333-4444-5555-666677778888",
+  "name": "OrderPaymentHook",
+  "endpoint": "https://atelier-nici.example/api/payments/webhook",
+  "method": "POST",
+  "expectedCode": 200,
+  "retries": 3,
+  "type": "PAYMENT",
+  "signingSecret": "whsec_example_not_a_real_secret"
+}
+```
+
+Assign the webhook next. A registered webhook that is not assigned does not receive events.
+
+---
+
+### P7. `assign-webhook-to-product`
+
+> **Status:** Planned / Planowane — not implemented, absent from `tools/list`.
+
+Links a webhook to a product. Mirrors `POST /api/pay/plugin/webhook/{webhookId}/products/{productId}` with no body. Without this step, payments still succeed and no notification is delivered.
+
+- **Auth Scope:** Partner (`X-API-KEY`, optional `X-SANDBOX-API-KEY`)
+- **Access:** Write
+
+#### Input Parameters (`request`)
+
+| Field | Type | Required | Constraints / Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `webhookId` | `string` | **Yes** | UUID | From `register-webhook`. |
+| `productId` | `string` | **Yes** | UUID | `PAY`, `GO`, or `PARKING` product that should emit events to this webhook. |
+
+#### Response JSON
+
+```json
+{
+  "webhookId": "11112222-3333-4444-5555-666677778888",
+  "productId": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "assigned"
+}
+```
+
+Assigning the same pair again returns `status: "assigned"` and does not create a second link.
+
+---
+
+### P8. `list-product-webhooks`
+
+> **Status:** Planned / Planowane — not implemented, absent from `tools/list`.
+
+Lists webhook-to-product links. Mirrors `GET /api/pay/plugin/webhook/{webhookId}/products`. Pass `webhookId` to read that webhook's products. Pass `productId` to read the webhooks assigned to that product. Pass both to test one pair. At least one is required.
+
+- **Auth Scope:** Partner (`X-API-KEY`, optional `X-SANDBOX-API-KEY`)
+- **Access:** Read
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `productId` | `string` | One of the two | Product UUID. |
+| `webhookId` | `string` | One of the two | Webhook UUID. |
+
+#### Response JSON
+
+```json
+{
+  "count": 1,
+  "assignments": [
+    {
+      "webhookId": "11112222-3333-4444-5555-666677778888",
+      "productId": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "OrderPaymentHook",
+      "endpoint": "https://atelier-nici.example/api/payments/webhook",
+      "method": "POST",
+      "expectedCode": 200,
+      "retries": 3,
+      "type": "PAYMENT"
+    }
+  ]
+}
+```
+
+The response never includes `signingSecret`.
+
+---
+
+### P9. `parking-update-pricing`
+
+> **Status:** Planned / Planowane — not implemented, absent from `tools/list`.
+
+Replaces the base tariff of an existing `PARKING` product. It does not create a parking, and it does not edit an `EVENT` or `PRICING_CHANGE` created by `parking-create-event`. Read the current tariff with the live tool `parking-get-pricing` first, then send it back in the canonical map.
+
+- **Auth Scope:** Partner (`X-API-KEY`, optional `X-SANDBOX-API-KEY`)
+- **Access:** Write
+
+#### Input Parameters (`request`)
+
+| Field | Type | Required | Constraints / Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `parkingId` | `string` | **Yes** | UUID | From `parking-create-product`. |
+| `entriesJson` | `string` | **Yes** | Canonical indexed object map | Full replacement of the base `entries` map. The shorthand array accepted by `parking-create-product` is rejected with `400` `ENTRIES_NOT_CANONICAL`. |
+| `timezone` | `string` | No | Unchanged when omitted | IANA timezone. |
+| `maximumCostPerDay` | `integer` | No | Grosze, ≥ 0 | Daily cap. Omit to keep the current value. |
+| `maximumCostPerWeek` | `integer` | No | Grosze, ≥ 0 | Weekly cap. Omit to keep the current value. |
+| `minimumCostPerDay` | `integer` | No | Grosze, ≥ 0 | Minimum charge per day. |
+| `minimumTimePerDay` | `string` | No | ISO-8601 duration | For example `'PT0S'`. |
+| `freeTimePerTicket` | `string` | No | ISO-8601 duration | For example `'PT15M'`. |
+| `restartAtMidnight` | `boolean` | No | Optional | Reset the tariff calculation at midnight. |
+| `limitOptionsToEntries` | `boolean` | No | Optional | Restrict selectable durations to the defined entries. |
+| `onlyPlatesTicket` | `boolean` | No | Optional | License-plate tickets only. |
+| `toTheEndOfDay` | `boolean` | No | Optional | Charge through the end of the day. |
+| `subscriptionsJson` | `string` | No | JSON array string | Same shape as `parking-create-product`. Omit to keep the current list. |
+| `freeTicketsJson` | `string` | No | JSON array string | Same shape as `parking-create-product`. |
+| `activeHoursJson` | `string` | No | JSON object string | Paid hours per weekday, same shape as `parking-create-product`. |
+
+#### Canonical `entriesJson`
+
+Keys are `"0"`, `"1"`, … in order. Every value has:
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `order` | `integer` | **Yes** | Same as the key's index. |
+| `cost` | `integer` | **Yes** | Grosze, ≥ 0. `300` = 3.00 PLN. Not a float, not a PLN decimal. |
+| `duration` | `string` | **Yes** | ISO-8601 duration starting with `PT`, for example `'PT15M'`, `'PT1H'`, `'PT24H'`. |
+| `repeatable` | `boolean` | **Yes** | Usually `true` only on the last bracket. |
+| `partialCost` | `boolean` | **Yes** | When `true`, a partial interval is charged proportionally. |
+
+```json
+{
+  "0": {"order": 0, "cost": 200, "duration": "PT30M", "repeatable": false, "partialCost": false},
+  "1": {"order": 1, "cost": 500, "duration": "PT1H", "repeatable": true, "partialCost": false}
+}
+```
+
+`entriesJson` is that object encoded as a string, the same way `parking-create-product` takes format 1.
+
+#### Response JSON
+
+```json
+{
+  "parkingId": "d4e5f6a7-b8c9-4012-9345-6789abcdef01",
+  "status": "updated",
+  "entries": {
+    "0": {"order": 0, "cost": 200, "duration": "PT30M", "repeatable": false, "partialCost": false},
+    "1": {"order": 1, "cost": 500, "duration": "PT1H", "repeatable": true, "partialCost": false}
+  }
+}
+```
+
+`entries` is the canonical map now stored. Event windows are unchanged. Read them with `parking-get-pricing`.
+
+---
+
+### Catalog visibility
+
+`search-public-products` lists a product only when all three are true:
+
+1. Product `status` is `ACTIVE`.
+2. Visibility is `public`.
+3. The owning partner has completed KYC in [panel.paymove.io](https://panel.paymove.io).
+
+KYC is not an MCP call. `kycVerified` is read-only. A partner can set `visibility` to `public` before KYC is finished; `searchable` stays `false` and `searchableReason` is `KYC_REQUIRED`. Hidden and inactive products stay available to the owning partner's tools. Public `list-availability` follows the same searchable rule.
+
+`searchableReason` is one of `OK`, `HIDDEN`, `INACTIVE`, `KYC_REQUIRED`. Branch on that field and on `status`, not on `message`.
+
+### P10. `set-product-visibility`
+
+> **Status:** Planned / Planowane — not implemented, absent from `tools/list`.
+
+Sets whether a partner product is allowed into the public catalog. Applies to `PAY`, `GO`, and `PARKING`. It does not change `status`, KYC, or the price list.
+
+- **Auth Scope:** Partner (`X-API-KEY`, optional `X-SANDBOX-API-KEY`)
+- **Access:** Write
+
+#### Input Parameters (`request`)
+
+| Field | Type | Required | Constraints / Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `productId` | `string` | **Yes** | UUID | Product to update. |
+| `visibility` | `string` | **Yes** | `'public'` or `'hidden'` | `'hidden'` removes the product from `search-public-products`. `'public'` allows listing once status is `ACTIVE` and KYC is done. |
+
+#### Response JSON
+
+```json
+{
+  "productId": "550e8400-e29b-41d4-a716-446655440000",
+  "productType": "PAY",
+  "status": "ACTIVE",
+  "visibility": "public",
+  "kycVerified": true,
+  "searchable": true,
+  "searchableReason": "OK"
+}
+```
+
+A second call with the same `visibility` returns the same body.
+
+---
+
+### P11. `get-product-status`
+
+> **Status:** Planned / Planowane — not implemented, absent from `tools/list`.
+
+Reads status, visibility, and whether the product currently qualifies for `search-public-products`.
+
+- **Auth Scope:** Partner (`X-API-KEY`, optional `X-SANDBOX-API-KEY`)
+- **Access:** Read
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `productId` | `string` | **Yes** | Product UUID belonging to the authenticated partner. |
+
+#### Response JSON
+
+```json
+{
+  "productId": "550e8400-e29b-41d4-a716-446655440000",
+  "productType": "PAY",
+  "status": "ACTIVE",
+  "visibility": "hidden",
+  "kycVerified": true,
+  "searchable": false,
+  "searchableReason": "HIDDEN"
+}
+```
+
+`status` uses the product's existing lifecycle values (`ACTIVE` and any non-active value the panel already stores). This tool does not add a product type.
 

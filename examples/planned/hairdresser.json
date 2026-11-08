@@ -1,0 +1,95 @@
+{
+  "status": "Planned / Planowane",
+  "note": "Sample arguments only. set-availability and create-reservation are absent from tools/list. Do not call them. create-pay-product and add-pay-pricing-entry are live.",
+  "useCase": "hairdresser",
+  "productType": "PAY",
+  "syntheticName": "Atelier Nici",
+  "liveSteps": [
+    {
+      "tool": "create-pay-product",
+      "arguments": {
+        "request": {
+          "name": "Atelier Nici",
+          "price": 0,
+          "description": "Salon fryzjerski",
+          "location": "Sopot"
+        }
+      }
+    },
+    {
+      "tool": "add-pay-pricing-entry",
+      "arguments": {
+        "request": {
+          "productId": "550e8400-e29b-41d4-a716-446655440000",
+          "price": 8000,
+          "description": "Strzyżenie damskie 30 min"
+        }
+      }
+    }
+  ],
+  "plannedSteps": [
+    {
+      "tool": "set-availability",
+      "access": "write",
+      "auth": "X-API-KEY",
+      "arguments": {
+        "request": {
+          "targetType": "PAY_ENTRY",
+          "productId": "550e8400-e29b-41d4-a716-446655440000",
+          "entryId": "9f8e7d6c-5b4a-3210-fedc-ba9876543210",
+          "timezone": "Europe/Warsaw",
+          "mode": "upsert",
+          "slots": [
+            {
+              "start": "2026-11-20T10:00:00",
+              "end": "2026-11-20T10:30:00",
+              "capacity": 1,
+              "resource": "stylist-a"
+            },
+            {
+              "start": "2026-11-20T10:30:00",
+              "end": "2026-11-20T11:00:00",
+              "capacity": 1,
+              "resource": "stylist-a"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tool": "list-availability",
+      "access": "read",
+      "auth": "public when the product is searchable; X-API-KEY for the partner's hidden product",
+      "arguments": {
+        "productId": "550e8400-e29b-41d4-a716-446655440000",
+        "entryId": "9f8e7d6c-5b4a-3210-fedc-ba9876543210",
+        "from": "2026-11-20T00:00:00",
+        "to": "2026-11-21T00:00:00",
+        "timezone": "Europe/Warsaw"
+      }
+    },
+    {
+      "tool": "create-reservation",
+      "access": "write",
+      "auth": "X-API-KEY",
+      "arguments": {
+        "request": {
+          "targetType": "PAY_ENTRY",
+          "productId": "550e8400-e29b-41d4-a716-446655440000",
+          "entryId": "9f8e7d6c-5b4a-3210-fedc-ba9876543210",
+          "start": "2026-11-20T10:00:00",
+          "end": "2026-11-20T10:30:00",
+          "resource": "stylist-a",
+          "quantity": 1,
+          "externalId": "APT-1001",
+          "returnUrl": "https://atelier-nici.example/payment/return",
+          "email": "klient@example.com",
+          "locale": "pl-PL",
+          "ttlSeconds": 600
+        }
+      },
+      "omittedOnPurpose": ["price", "amount", "Idempotency-Key"],
+      "serverComputesPriceGrosze": 8000
+    }
+  ]
+}

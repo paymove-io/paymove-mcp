@@ -5,7 +5,7 @@
 > ## Agent Instructions
 > ## paymove integration rules for AI agents
 >
-> These rules are verified against the live API. Follow them exactly.
+> Rules 1–16 are verified against the live API. Rules 17–19 also describe a planned MCP contract that is not implemented. Follow them exactly. Do not call a tool named in rule 18 until it appears in `tools/list`.
 >
 > 1. Amounts are INTEGERS in grosze (minor units). `1000` means 10.00 PLN. PLN is the only supported currency and there is no currency field in the API.
 > 2. `price` must always be an integer in grosze. Never send a float. Compute it with `Math.round(pln * 100)`.
@@ -23,6 +23,9 @@
 > 14. If the merchant has no `productId` yet, do not stop at a placeholder: ask for the API key, the `partnerId` and the shop name, propose defaults for `location` and `timezone` (`Europe/Warsaw`), offer the optional fields once, then create the product for them with `POST /api/product/pay` and take `productId` from `id` in the response. Do the same for the webhook: register it, then assign it to the product. Guided procedure: https://docs.paymove.io/skill.md (Steps 1-2).
 > 15. Full documentation index: https://docs.paymove.io/llms.txt · Copy-paste quickstart: https://docs.paymove.io/en/quickstart.md · Agent skill: https://docs.paymove.io/skill.md
 > 16. Paymove MCP (Streamable HTTP) primary endpoint: https://api.paymove.io/api/mcp (also https://mcp-api.paymove.io/mcp). Public catalog discovery (`search-public-products`) does not require `X-API-KEY`. Partner tools (including `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`, and `list-partner-products`) require `X-API-KEY`.
+> 17. A new partner product is only `PAY`, `GO`, or `PARKING`. Tickets and timed entry use `GO` (`go-create-product`, `go-add-ticket-option`). Parking uses `PARKING` (`parking-create-product`). A service with no date, and an appointment book (hairdresser, visit), use `PAY` (`create-pay-product`, `add-pay-pricing-entry`). Do not invent a product type and do not add a second create tool. Collect, in one message, the environment, API key, `partnerId` when creating, the shop name, location, timezone (`Europe/Warsaw` unless the user says otherwise), each price in grosze, and — for a booked offer — slot start, end, capacity, and an optional resource label.
+> 18. Planned MCP tools are not callable. `set-availability`, `list-availability`, `create-reservation`, `get-reservation`, `cancel-reservation`, `register-webhook`, `assign-webhook-to-product`, `list-product-webhooks`, `parking-update-pricing`, `set-product-visibility`, and `get-product-status` are marked Planned / Planowane in `docs/tools.md`. They are not part of the 20 live tools. Do not call one until its name appears in `tools/list`. Register webhooks with the live REST calls until the MCP names are listed. Do not invent a REST path for slots, parking tariff edits, or visibility.
+> 19. When those reservation tools ship: the price is computed on the server from the entry (never send `price` or `amount`), `externalId` is the idempotency key, a hold blocks the seat, and the booking is confirmed only after the payment webhook `COMPLETED` and a valid `X-Paymove-Signature`. A `returnUrl` visit is not confirmation. `search-public-products` is specified to list a product only when it is `ACTIVE`, visibility is `public`, and the partner has finished KYC in the panel. KYC is not an MCP call. Guide: `docs/use-cases.md`.
 
 # Integracja z agentami AI
 
@@ -105,6 +108,12 @@ Jeśli piszesz integrację samodzielnie albo sprawdzasz kod wygenerowany przez a
 5. **Nigdy nie realizuj zamówienia na `returnUrl`** - to tylko przekierowanie przeglądarki.
 6. **Wysyłaj wyłącznie pola opisane w dokumentacji.** Przy tworzeniu płatności wymagane są `externalId`, `price` i `details.returnUrl`.
 7. **`externalId` jest unikalne dla zamówienia.** Zmianę ceny istniejącego subproduktu wykonuje `PATCH`. Nie wysyłaj nagłówka `Idempotency-Key`. Przy rejestracji webhooka wymagane są `retries` i `expectedCode`.
+
+## Wybór typu produktu na MCP
+
+Nowy produkt partnera to wyłącznie `PAY`, `GO` albo `PARKING`. Bilety i wejście na godzinę: `GO`. Parking: `PARKING`. Usługa bez daty oraz terminarz (fryzjer, wizyta): `PAY`. Nie dodawaj typu produktu i nie dodawaj drugiego narzędzia tworzącego. Agent zbiera w jednej wiadomości środowisko, klucz API, `partnerId` przy tworzeniu, nazwę, lokalizację, strefę `Europe/Warsaw`, ceny w groszach, a przy rezerwacji także początek, koniec, pojemność i opcjonalną etykietę zasobu.
+
+Narzędzia `set-availability`, `list-availability`, `create-reservation`, `get-reservation`, `cancel-reservation`, `register-webhook`, `assign-webhook-to-product`, `list-product-webhooks`, `parking-update-pricing`, `set-product-visibility` i `get-product-status` mają status **Planned / Planowane**. Nie wchodzą do liczby 20 narzędzi na żywo. Nie wołaj ich, dopóki nazwa nie pojawi się w `tools/list`. Do tego czasu webhook rejestruj przez REST. Cena rezerwacji jest liczona na serwerze z pozycji cennika. Potwierdzeniem jest wyłącznie webhook płatności `COMPLETED` po weryfikacji `X-Paymove-Signature`. Przewodnik: [`docs/use-cases.pl.md`](docs/use-cases.pl.md).
 
 Pełne uzasadnienie każdej z nich znajdziesz w [Kodach błędów](https://docs.paymove.io/errors.md) i [Weryfikacji podpisu](https://docs.paymove.io/webhook-signature.md).
 
