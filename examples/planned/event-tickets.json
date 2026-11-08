@@ -1,0 +1,81 @@
+{
+  "status": "Planned / Planowane",
+  "note": "Sample arguments only. These tool names are absent from tools/list. Do not call them.",
+  "useCase": "event-tickets",
+  "productType": "GO",
+  "syntheticName": "Festiwal Światła nad Odrą",
+  "liveSteps": [
+    {
+      "tool": "go-create-product",
+      "status": "live",
+      "arguments": {
+        "request": {
+          "name": "Festiwal Światła nad Odrą",
+          "fullName": "Festiwal Światła nad Odrą",
+          "location": "Wrocław",
+          "shortName": "festiwal-swiatla-nad-odra"
+        }
+      }
+    },
+    {
+      "tool": "go-add-ticket-option",
+      "status": "live",
+      "arguments": {
+        "request": {
+          "productId": "a1b2c3d4-e5f6-4789-abcd-112233445566",
+          "title": "Bilet normalny",
+          "price": 4500,
+          "description": "Seans wieczorny, miejsce siedzące"
+        }
+      }
+    }
+  ],
+  "plannedSteps": [
+    {
+      "tool": "set-availability",
+      "access": "write",
+      "auth": "X-API-KEY",
+      "arguments": {
+        "request": {
+          "targetType": "GO_TICKET",
+          "productId": "a1b2c3d4-e5f6-4789-abcd-112233445566",
+          "entryId": "11112222-3333-4444-5555-666677778888",
+          "timezone": "Europe/Warsaw",
+          "mode": "upsert",
+          "slots": [
+            {
+              "start": "2026-11-20T18:00:00",
+              "end": "2026-11-20T21:00:00",
+              "capacity": 120
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tool": "create-reservation",
+      "access": "write",
+      "auth": "X-API-KEY",
+      "arguments": {
+        "request": {
+          "targetType": "GO_TICKET",
+          "productId": "a1b2c3d4-e5f6-4789-abcd-112233445566",
+          "entryId": "11112222-3333-4444-5555-666677778888",
+          "start": "2026-11-20T18:00:00",
+          "end": "2026-11-20T21:00:00",
+          "quantity": 2,
+          "externalId": "FEST-2001",
+          "returnUrl": "https://festiwal-swiatla.example/payment/return",
+          "ttlSeconds": 600
+        }
+      },
+      "serverComputesPriceGrosze": 9000,
+      "responseSketch": {
+        "status": "HELD",
+        "confirmed": false,
+        "price": 9000,
+        "reservationId": "c1d2e3f4-a5b6-4789-8abc-def012345678"
+      }
+    }
+  ]
+}

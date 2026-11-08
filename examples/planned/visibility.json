@@ -1,0 +1,50 @@
+{
+  "status": "Planned / Planowane",
+  "note": "set-product-visibility and get-product-status are absent from tools/list. search-public-products is live and its response schema is unchanged by this file.",
+  "searchRuleWhenShipped": "A product appears in search-public-products only when status is ACTIVE, visibility is public, and the partner has finished KYC in panel.paymove.io.",
+  "plannedSteps": [
+    {
+      "tool": "set-product-visibility",
+      "access": "write",
+      "auth": "X-API-KEY",
+      "arguments": {
+        "request": {
+          "productId": "550e8400-e29b-41d4-a716-446655440000",
+          "visibility": "public"
+        }
+      },
+      "responseSketch": {
+        "productType": "PAY",
+        "status": "ACTIVE",
+        "visibility": "public",
+        "kycVerified": true,
+        "searchable": true,
+        "searchableReason": "OK"
+      }
+    },
+    {
+      "tool": "get-product-status",
+      "access": "read",
+      "auth": "X-API-KEY",
+      "arguments": {
+        "productId": "550e8400-e29b-41d4-a716-446655440000"
+      }
+    },
+    {
+      "tool": "set-product-visibility",
+      "access": "write",
+      "auth": "X-API-KEY",
+      "arguments": {
+        "request": {
+          "productId": "550e8400-e29b-41d4-a716-446655440000",
+          "visibility": "hidden"
+        }
+      },
+      "responseSketch": {
+        "visibility": "hidden",
+        "searchable": false,
+        "searchableReason": "HIDDEN"
+      }
+    }
+  ]
+}

@@ -794,6 +794,30 @@ Pełna specyfikacja parametrów znajduje się w [`docs/tools.md`](./docs/tools.m
 
 <br />
 
+### Narzędzia planowane (Planned / Planowane)
+
+Te 11 narzędzi to szkic kontraktu. **Nie są zaimplementowane**, **nie** wliczają się do 20 narzędzi powyżej i **nie** pojawiają się w `tools/list`. Nie wołaj ich, dopóki nazwa tam nie wejdzie. Specyfikacja: [`docs/tools.md`](./docs/tools.md#planned-tools). Który typ produktu wybrać: [`docs/use-cases.md`](./docs/use-cases.md) · [`docs/use-cases.pl.md`](./docs/use-cases.pl.md).
+
+Nowa oferta to nadal `PAY`, `GO` albo `PARKING`. Bilety idą przez żywe `go-create-product`. Parking przez żywe `parking-create-product`. Usługa bez daty i terminarz przez żywe `create-pay-product`. Szkic dokłada sloty, opakowania webhooków, edycję taryfy parkingu i flagę widoczności. Nie dokłada typu produktu.
+
+| Narzędzie | Dostęp | Autoryzacja | Co opisuje szkic |
+| :--- | :--- | :--- | :--- |
+| `set-availability` | Zapis | `X-API-KEY` | Sloty (`start`, `end`, `capacity`, opcjonalny `resource`, strefa `Europe/Warsaw`) na wariancie biletu `GO` albo pozycji cennika `PAY` |
+| `list-availability` | Odczyt | Publiczne, gdy produkt jest wyszukiwalny; w przeciwnym razie klucz partnera | Wolne miejsca. Publicznie tylko dla aktywnego, publicznego produktu partnera po KYC |
+| `create-reservation` | Zapis | `X-API-KEY` | Atomowy hold (proponowane TTL 600 s), idempotentny po `externalId`. Cenę liczy serwer. Zwraca `reservationId` i `redirectUrl` checkoutu |
+| `get-reservation` | Odczyt | `X-API-KEY` | Status holdu. `confirmed` jest prawdziwe dopiero po płatności `COMPLETED` |
+| `cancel-reservation` | Zapis | `X-API-KEY` | Zwalnia miejsce `HELD`. Nie zwraca pieniędzy za potwierdzoną rezerwację |
+| `register-webhook` | Zapis | `X-API-KEY` | Odzwierciedla `POST /api/pay/plugin/webhook` (`name`, `endpoint`, `method` `POST`, `expectedCode`, `retries`, `type` `PAYMENT`) |
+| `assign-webhook-to-product` | Zapis | `X-API-KEY` | Odzwierciedla `POST /api/pay/plugin/webhook/{webhookId}/products/{productId}` |
+| `list-product-webhooks` | Odczyt | `X-API-KEY` | Odzwierciedla `GET /api/pay/plugin/webhook/{webhookId}/products` |
+| `parking-update-pricing` | Zapis | `X-API-KEY` | Podmienia taryfę bazową. Wpisy kanoniczne: `cost` w groszach, `duration` ISO-8601, `repeatable`, `partialCost` |
+| `set-product-visibility` | Zapis | `X-API-KEY` | `public` albo `hidden` |
+| `get-product-status` | Odczyt | `X-API-KEY` | Status, widoczność, flaga KYC i to, czy wyszukiwarka zwróciłaby produkt |
+
+`search-public-products` zostaje żywym narzędziem katalogu. Szkic mówi, że produkt trafia na listę tylko gdy jest `ACTIVE`, widoczność to `public`, a partner skończył KYC w [panel.paymove.io](https://panel.paymove.io). Ten filtr nie jest nowym polem żywego narzędzia. Rejestracja webhooka przez REST działa dziś; trzy wiersze webhooków powyżej to opakowania MCP i nadal są planowane. Przed realizacją zamówienia weryfikuj `X-Paymove-Signature` i realizuj je wyłącznie przy `COMPLETED`.
+
+<br />
+
 ---
 
 <br />

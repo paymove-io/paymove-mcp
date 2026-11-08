@@ -1,0 +1,81 @@
+{
+  "status": "Planned / Planowane",
+  "note": "Sample arguments only. Booking example for a visit. Not medical advice. Planned tools are absent from tools/list.",
+  "useCase": "visit",
+  "productType": "PAY",
+  "syntheticName": "Przychodnia na Lipowej",
+  "liveSteps": [
+    {
+      "tool": "create-pay-product",
+      "arguments": {
+        "request": {
+          "name": "Przychodnia na Lipowej",
+          "price": 0,
+          "description": "Wizyty umawiane",
+          "location": "Lublin"
+        }
+      }
+    },
+    {
+      "tool": "add-pay-pricing-entry",
+      "arguments": {
+        "request": {
+          "productId": "660e8400-e29b-41d4-a716-446655440001",
+          "price": 12000,
+          "description": "Wizyta 20 min"
+        }
+      }
+    }
+  ],
+  "plannedSteps": [
+    {
+      "tool": "set-availability",
+      "access": "write",
+      "auth": "X-API-KEY",
+      "arguments": {
+        "request": {
+          "targetType": "PAY_ENTRY",
+          "productId": "660e8400-e29b-41d4-a716-446655440001",
+          "entryId": "8a1b2c3d-4e5f-6789-abcd-ef0123456789",
+          "timezone": "Europe/Warsaw",
+          "mode": "upsert",
+          "slots": [
+            {
+              "start": "2026-11-20T09:00:00",
+              "end": "2026-11-20T09:20:00",
+              "capacity": 1,
+              "resource": "room-1"
+            },
+            {
+              "start": "2026-11-20T09:20:00",
+              "end": "2026-11-20T09:40:00",
+              "capacity": 1,
+              "resource": "room-1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tool": "create-reservation",
+      "access": "write",
+      "auth": "X-API-KEY",
+      "arguments": {
+        "request": {
+          "targetType": "PAY_ENTRY",
+          "productId": "660e8400-e29b-41d4-a716-446655440001",
+          "entryId": "8a1b2c3d-4e5f-6789-abcd-ef0123456789",
+          "start": "2026-11-20T09:00:00",
+          "end": "2026-11-20T09:20:00",
+          "resource": "room-1",
+          "quantity": 1,
+          "externalId": "VIS-3001",
+          "returnUrl": "https://przychodnia-lipowa.example/payment/return",
+          "ttlSeconds": 600
+        }
+      },
+      "serverComputesPriceGrosze": 12000,
+      "confirmation": "Only after the payment webhook status is COMPLETED and X-Paymove-Signature verifies."
+    }
+  ]
+}

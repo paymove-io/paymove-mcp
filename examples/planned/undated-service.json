@@ -1,0 +1,45 @@
+{
+  "status": "Planned / Planowane",
+  "note": "The PAY create and checkout tools below are live. Visibility is planned. This offer has no slots.",
+  "useCase": "service-without-a-date",
+  "productType": "PAY",
+  "syntheticName": "Biuro Przekładu Lipowa",
+  "liveSteps": [
+    {
+      "tool": "create-pay-product",
+      "arguments": {
+        "request": {
+          "name": "Biuro Przekładu Lipowa",
+          "price": 0,
+          "description": "Tłumaczenia na stronę",
+          "location": "Poznań"
+        }
+      }
+    },
+    {
+      "tool": "add-pay-pricing-entry",
+      "arguments": {
+        "request": {
+          "productId": "550e8400-e29b-41d4-a716-446655440000",
+          "price": 6000,
+          "description": "Tłumaczenie — jedna strona"
+        }
+      }
+    },
+    {
+      "tool": "create-subproduct",
+      "arguments": {
+        "request": {
+          "productId": "550e8400-e29b-41d4-a716-446655440000",
+          "externalId": "TRL-40",
+          "amount": 12000,
+          "description": "Tłumaczenie — dwie strony",
+          "returnUrl": "https://biuro-przekladu-lipowa.example/payment/return"
+        }
+      },
+      "note": "amount is 2 × 6000 grosze, computed by the partner server from the entry. There is no reservation."
+    }
+  ],
+  "plannedSteps": [],
+  "doNotCall": ["set-availability", "create-reservation"]
+}

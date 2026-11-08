@@ -1,11 +1,11 @@
 ---
 name: paymove-integration
-description: A complete, step-by-step procedure for an AI agent implementing paymove checkout, Pay&Go, Parking, and MCP tools.
+description: A complete, step-by-step procedure for an AI agent implementing paymove checkout, Pay&Go, Parking, and MCP tools. Planned MCP tools in the contract draft are not callable until they appear in tools/list.
 ---
 
 # paymove integration skill
 
-You are implementing payments with **paymove**, a Polish payment gateway. Follow this procedure exactly. Everything here is verified against the live API.
+You are implementing payments with **paymove**, a Polish payment gateway. Follow this procedure exactly. The REST steps below are verified against the live API. The section [Planned MCP tools](#planned-mcp-tools) is a contract draft. Those tools are not on the server.
 
 ## When to use this
 
@@ -41,6 +41,31 @@ Before any of that can happen, the merchant's account needs a **product** (their
 13. **Do not pin a version of `@paymove-io/sdk`.**
 14. **PayPo appears on the checkout only from `1000` grosze (10.00 PLN).** Below that the method is not shown at all - `details.triggerPayment: "PAYPO"` has nothing to preselect, and a widget `methods` list with `PAYPO` would advertise a method the customer cannot pick. Do not promise PayPo on smaller orders.
 15. **Sandbox BLIK test code: any 6 digits starting with `777`** (`777123`, `777000`, …). The three leading sevens are what matters; the other three digits are arbitrary. Sandbox only - production needs a real code from the customer's banking app.
+16. **A new partner product is `PAY`, `GO`, or `PARKING`.** Pick from the offer, do not invent a type, and do not add a second create tool. Tickets and timed entry: `GO` via `go-create-product` and `go-add-ticket-option`. Parking: `PARKING` via `parking-create-product`. A service with no date, and an appointment book (hairdresser, a visit): `PAY` via `create-pay-product` and `add-pay-pricing-entry`. Appointments attach slots to that pricing entry. They are not a new product.
+17. **Do not call a planned MCP tool.** The draft names are `set-availability`, `list-availability`, `create-reservation`, `get-reservation`, `cancel-reservation`, `register-webhook`, `assign-webhook-to-product`, `list-product-webhooks`, `parking-update-pricing`, `set-product-visibility`, and `get-product-status`. They are marked Planned / Planowane. Call one only after that exact name appears in `tools/list` on `https://api.paymove.io/api/mcp`. Until then, webhooks go through Step 2 REST, and slots, parking tariff edits, and visibility flags are not available.
+
+## Planned MCP tools
+
+Not implemented. Not part of the 20 live tools. Absent from `tools/list`. Full inputs, outputs, and errors: [docs/tools.md](docs/tools.md#planned-tools). Sequences: [docs/use-cases.md](docs/use-cases.md) and [docs/use-cases.pl.md](docs/use-cases.pl.md).
+
+When the user wants to sell something, collect the data in one message, then use a live create tool:
+
+| Offer | Ask for | Live tool | Planned follow-up, do not call yet |
+|---|---|---|---|
+| Tickets, workshop, timed entry | Venue name, city, each ticket title and price in grosze, and — if a session has a seat count — start, end, capacity, timezone (`Europe/Warsaw`) | `go-create-product`, `go-add-ticket-option` | `set-availability` on that ticket `entryId` (`targetType: "GO_TICKET"`) |
+| Parking | Zone name, slug, address, tariff brackets as grosze and ISO-8601 durations | `parking-create-product`; read with `parking-get-pricing`; temporary override with `parking-create-event` | `parking-update-pricing` for a later base-tariff edit. No slots. |
+| Service with no date | Shop name, each package name and price in grosze | `create-pay-product`, `add-pay-pricing-entry`, tracked checkout with `create-subproduct` | None for the clock. `set-product-visibility` only after it is listed. |
+| Hairdresser, visit, any appointment | Shop name, each service name and price in grosze, slots (start, end, capacity, optional resource such as `stylist-a`), timezone | `create-pay-product` with `price: 0`, then `add-pay-pricing-entry` per service | `set-availability` (`targetType: "PAY_ENTRY"`), then `create-reservation` |
+
+Rules the draft already fixes, so you do not invent a different shape when the tools ship:
+
+- Reservation price is computed on the server from the entry. The caller does not send `price` or `amount`.
+- `create-reservation` is idempotent on `externalId`. Do not send `Idempotency-Key`.
+- The hold (proposed default 600 seconds) blocks the seat. A second hold of the last seat fails.
+- The appointment or ticket is confirmed only when the payment webhook has `status: "COMPLETED"` and `X-Paymove-Signature` verifies. `returnUrl` does not confirm. `HELD` does not confirm.
+- `search-public-products` is specified, once visibility ships, to list only `ACTIVE` products with visibility `public` whose partner has finished KYC in the panel. KYC is not an MCP call.
+
+If the user asks you to book a slot, edit a parking base tariff, or hide a product today, say that the tool is planned and stop. Do not POST an undocumented path. Webhook registration is the exception: Step 2 REST is live, the MCP names `register-webhook`, `assign-webhook-to-product`, and `list-product-webhooks` are not.
 
 ## Step 0 - Credentials and environment
 
@@ -448,6 +473,10 @@ Before you report the integration as done, check each of these against the code 
 - Do not send an `Idempotency-Key` header.
 - Do not branch on the `message` text of an error.
 - Do not reuse an `externalId` to change a price; call `PATCH /api/pay/product/{productId}/subproduct/{externalId}` with `{"price": <int>}` instead.
+- Do not invent a product type other than `PAY`, `GO`, or `PARKING`, and do not add a create tool for appointments.
+- Do not call `set-availability`, `list-availability`, `create-reservation`, `get-reservation`, `cancel-reservation`, `register-webhook`, `assign-webhook-to-product`, `list-product-webhooks`, `parking-update-pricing`, `set-product-visibility`, or `get-product-status` unless that name is in `tools/list`.
+- Do not send a price on a reservation. The server copies it from the entry.
+- Do not treat a reservation hold or a `returnUrl` visit as confirmation. Confirmation is the verified payment webhook with `COMPLETED`.
 
 ## Deeper reading
 
@@ -460,5 +489,7 @@ Before you report the integration as done, check each of these against the code 
 - Payment methods, PayPo minimum, sandbox BLIK code: https://docs.paymove.io/en/payment-methods.md
 - Node SDK: https://docs.paymove.io/en/sdk/javascript.md
 - Full index: https://docs.paymove.io/llms.txt
+- Live MCP tools and the planned contract: [docs/tools.md](docs/tools.md)
+- Which product type to use: [docs/use-cases.md](docs/use-cases.md) · [docs/use-cases.pl.md](docs/use-cases.pl.md)
 
 If something does not work as documented, tell the user to write to integration@paymove.io with the prompt used - paymove treats that as a documentation bug.

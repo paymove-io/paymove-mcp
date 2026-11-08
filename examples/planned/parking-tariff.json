@@ -1,0 +1,44 @@
+{
+  "status": "Planned / Planowane",
+  "note": "Sample arguments only. parking-update-pricing is absent from tools/list. Do not call it. parking-create-product and parking-get-pricing are live.",
+  "useCase": "parking",
+  "productType": "PARKING",
+  "syntheticName": "Parking Bulwar Przykładowy",
+  "liveRead": {
+    "tool": "parking-get-pricing",
+    "arguments": {
+      "parkingIdOrShortName": "d4e5f6a7-b8c9-4012-9345-6789abcdef01"
+    }
+  },
+  "plannedSteps": [
+    {
+      "tool": "parking-update-pricing",
+      "access": "write",
+      "auth": "X-API-KEY",
+      "arguments": {
+        "request": {
+          "parkingId": "d4e5f6a7-b8c9-4012-9345-6789abcdef01",
+          "entriesJson": "{\"0\":{\"order\":0,\"cost\":200,\"duration\":\"PT30M\",\"repeatable\":false,\"partialCost\":false},\"1\":{\"order\":1,\"cost\":500,\"duration\":\"PT1H\",\"repeatable\":true,\"partialCost\":false}}",
+          "maximumCostPerDay": 4000
+        }
+      }
+    }
+  ],
+  "canonicalEntries": {
+    "0": {
+      "order": 0,
+      "cost": 200,
+      "duration": "PT30M",
+      "repeatable": false,
+      "partialCost": false
+    },
+    "1": {
+      "order": 1,
+      "cost": 500,
+      "duration": "PT1H",
+      "repeatable": true,
+      "partialCost": false
+    }
+  },
+  "rejectedShape": "A JSON array with duration 30m and price in PLN. parking-update-pricing accepts only the indexed map above."
+}

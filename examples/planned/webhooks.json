@@ -1,0 +1,58 @@
+{
+  "status": "Planned / Planowane",
+  "note": "MCP wrappers are absent from tools/list. The same registration works today over REST: POST /api/pay/plugin/webhook and POST /api/pay/plugin/webhook/{webhookId}/products/{productId}. signingSecret below is a placeholder.",
+  "syntheticEndpoint": "https://atelier-nici.example/api/payments/webhook",
+  "plannedSteps": [
+    {
+      "tool": "register-webhook",
+      "access": "write",
+      "auth": "X-API-KEY",
+      "mirrors": "POST /api/pay/plugin/webhook",
+      "arguments": {
+        "request": {
+          "name": "OrderPaymentHook",
+          "endpoint": "https://atelier-nici.example/api/payments/webhook",
+          "method": "POST",
+          "expectedCode": 200,
+          "retries": 3,
+          "type": "PAYMENT",
+          "partnerId": "c8f2b8a1-4d3c-4e12-9a01-123456789abc",
+          "headers": {
+            "Content-Type": ["application/json"]
+          }
+        }
+      },
+      "responseSketch": {
+        "webhookId": "11112222-3333-4444-5555-666677778888",
+        "signingSecret": "whsec_example_not_a_real_secret"
+      },
+      "reminders": [
+        "Verify X-Paymove-Signature on the raw body before fulfilling.",
+        "Fulfil only when status is COMPLETED.",
+        "A returnUrl visit is not payment.",
+        "Live REST docs recommend type TRANSACTION. This sample uses PAYMENT because the contract example mirrors that value. See the open question in docs/use-cases.md."
+      ]
+    },
+    {
+      "tool": "assign-webhook-to-product",
+      "access": "write",
+      "auth": "X-API-KEY",
+      "mirrors": "POST /api/pay/plugin/webhook/{webhookId}/products/{productId}",
+      "arguments": {
+        "request": {
+          "webhookId": "11112222-3333-4444-5555-666677778888",
+          "productId": "550e8400-e29b-41d4-a716-446655440000"
+        }
+      }
+    },
+    {
+      "tool": "list-product-webhooks",
+      "access": "read",
+      "auth": "X-API-KEY",
+      "mirrors": "GET /api/pay/plugin/webhook/{webhookId}/products",
+      "arguments": {
+        "productId": "550e8400-e29b-41d4-a716-446655440000"
+      }
+    }
+  ]
+}
