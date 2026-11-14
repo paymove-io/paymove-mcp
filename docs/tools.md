@@ -1,6 +1,10 @@
-# Paymove MCP Server — Complete Reference of All 20 Tools
+# Paymove MCP Server — Partner tool reference
 
-This document provides the complete technical reference for all **20 tools** across **4 categories** exposed by the production **Paymove MCP Server** (`paymove-mcp-server`, Streamable HTTP). Primary live endpoint: `https://api.paymove.io/api/mcp`. The same server is also available at `https://mcp-api.paymove.io/mcp`.
+This document is the partner catalog and management reference (Pay, Pay&Go, Parking, and partner discovery). Primary live endpoint: `https://api.paymove.io/api/mcp`. The same server is also available at `https://mcp-api.paymove.io/mcp`.
+
+The running server, not this file, decides `tools/list`. On 14 November 2026 a call without an API key returned five public purchase tools: `search-public-products`, `go-purchase`, `pay-purchase`, `parking-purchase`, and `get-payment-status`. Their schemas and the payment process are in [`purchase-tools.md`](./purchase-tools.md) and [`agent-payment.md`](./agent-payment.md). The partner tools below were not in that unauthenticated list. `search-public-products` in this file describes the discovery response; the purchase flow around it is in the agent payment process.
+
+Agents that buy follow [`agent-payment.md`](./agent-payment.md): show variants and prices, reuse a known email ("send it to the same address?"), quote `expectedTotal` with the fee, take an explicit acceptance, pay by default through `productLink` outside the chat (mandatory in ChatGPT), and call `get-payment-status` instead of starting a second payment while the first is pending or unknown.
 
 ---
 
@@ -630,11 +634,11 @@ Returns JSON containing `entries`, `activeHours`, `maximumCostPerDay`, `maximumC
 
 ## Category 4: Public Discovery & Partner Catalog (`2 tools`)
 
-`search-public-products` is the only MCP tool that runs without an API key. It finds active `GO`, `PAY`, and `PARKING` products and returns a direct `productLink`. The other 19 tools require `X-API-KEY: <YOUR_PAYMOVE_API_KEY>`. `list-partner-products` returns up to 100 products belonging to the authenticated partner account.
+`search-public-products` runs without an API key and returns a direct `productLink`. The public purchase tools (`go-purchase`, `pay-purchase`, `parking-purchase`, `get-payment-status`) also run without a key; see [`purchase-tools.md`](./purchase-tools.md). The partner tools in this category and the categories above require `X-API-KEY: <YOUR_PAYMOVE_API_KEY>` when the backend exposes them. `list-partner-products` returns up to 100 products belonging to the authenticated partner account.
 
 ### 20. `search-public-products`
 
-Searches active public Paymove products (`GO` tickets and attractions, `PAY` payments and services, `PARKING` zones) and returns direct purchase links. No API key is required. The tool also works when `X-API-KEY` is set. Results are limited to 50 products, sorted by name ascending.
+Searches active public Paymove products (`GO` tickets and attractions, `PAY` payments and services, `PARKING` zones) and returns direct purchase links. No API key is required. The tool also works when `X-API-KEY` is set. On the live server the call accepts `limit` (1–50, default 20) and `page` (from 0) and returns `page` and `hasMore`. The current parameter list is in [`purchase-tools.md`](./purchase-tools.md). Buying continues with the [agent payment process](./agent-payment.md).
 
 - **Auth Scope:** Public (no `X-API-KEY` required; also available with a partner key)
 
@@ -645,6 +649,8 @@ Searches active public Paymove products (`GO` tickets and attractions, `PAY` pay
 | `query` | `string` | No | Search text matched against `name`, `fullName`, `shortName`, or `location` (e.g. `"zoo"`, `"muzeum"`, `"lotnisko"`). |
 | `location` | `string` | No | City or location filter (e.g. `"Warszawa"`, `"Gdynia"`, `"Gdańsk"`). |
 | `productType` | `string` | No | `GO`, `PAY`, or `PARKING`. Omit it to search all three. Any other value is rejected. |
+| `limit` | `integer` | No | Page size, 1–50. Default 20 on the live purchase server. |
+| `page` | `integer` | No | Page number starting at 0. Default 0. |
 
 #### Invalid `productType`
 
@@ -659,7 +665,7 @@ Searches active public Paymove products (`GO` tickets and attractions, `PAY` pay
 
 #### Response JSON
 
-The response object is exactly `count`, `totalElements`, and `products`.
+The live response includes `count`, `totalElements`, `page`, `hasMore`, and `products`.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |

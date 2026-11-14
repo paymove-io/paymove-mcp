@@ -409,6 +409,22 @@ Returns `{"status": "COMPLETED", "orderId": "..."}`. It needs no API key. Treat 
 
 Statuses: `INITIALIZED`, `PENDING`, `COMPLETED`, `CANCELED` (one L), `ERROR`, `REFUNDED`, `WAITING_FOR_EXTERNAL_ACTION`.
 
+## Buying through Paymove MCP
+
+This section is for an agent that buys a ticket, a payment, or parking **for the user** through the Paymove MCP server. It is a different job from the merchant integration above. The buyer flow does not use a merchant API key, does not register a webhook, and does not fulfil an order on `returnUrl`.
+
+Endpoint: `https://api.paymove.io/api/mcp`. The process, the `initialize` instructions, and each tool description are in [`docs/agent-payment.md`](./docs/agent-payment.md) and [`docs/mcp-agent-contract.json`](./docs/mcp-agent-contract.json).
+
+1. `search-public-products`, then `go-purchase`, `pay-purchase`, or `parking-purchase` with only the product id, to show variants and prices.
+2. The user picks the variant and quantity (parking: plate and, for `STANDARD`, `durationMinutes`) and the email. If an email is already known, ask "Send it to the same address?"
+3. Call the purchase tool again without a BLIK code. Show `merchant`, the product, the items total, the fee, and `expectedTotal`. Show validity only when the tool states it.
+4. Wait for an explicit acceptance of that `expectedTotal`.
+5. Default payment is `productLink`, outside the chat. In ChatGPT that link is mandatory, because ChatGPT blocks a BLIK code in the chat. Pass `blikCode` only on a platform that allows in-chat payment, and only in the call that starts the payment.
+6. If the payment is pending or the outcome is unknown, call `get-payment-status`. Do not start a second payment.
+7. Report the status, the confirmed email, and `summaryLink`.
+
+The BLIK code is not stored and not repeated. Variants and amounts come from the tools. The live server does not yet return these instructions on `initialize`; until the backend does, follow this section.
+
 ## Verification checklist
 
 Before you report the integration as done, check each of these against the code you wrote:

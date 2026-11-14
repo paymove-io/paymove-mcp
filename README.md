@@ -33,7 +33,7 @@ Buy city tickets and pay for parking across Poland without an API key, or launch
 
 ### 1. Public Mode (No API Key Required)
 
-Without an API key, `tools/list` exposes `search-public-products`. Any AI agent uses that tool to search active city services, tickets, parking zones, and payments across Poland by name, city, or type (`GO`, `PARKING`, `PAY`) and receives a direct purchase link (`productLink`) payable with BLIK, Apple Pay, Google Pay, cards, or PayPo. The same tool stays available when an API key is sent.
+Without an API key, `tools/list` returns five public purchase tools: `search-public-products`, `go-purchase`, `pay-purchase`, `parking-purchase`, and `get-payment-status`. An agent searches active services, loads variants and prices, quotes `expectedTotal`, and pays. The default payment is `productLink` on the Paymove page, outside the chat. That link is mandatory in ChatGPT. A BLIK code inside the chat is only for a platform that allows it, and only in the call that starts the payment. The full process is in [Agent payment process](./docs/agent-payment.md).
 
 **Claude Code:**
 
@@ -57,7 +57,7 @@ claude mcp add --transport http paymove https://api.paymove.io/api/mcp
 
 ### 2. Merchant Mode (With `X-API-KEY`)
 
-The other **19** tools require a partner key in the header `X-API-KEY: <YOUR_PAYMOVE_API_KEY>`. That includes `list-partner-products` and every Pay, Pay&Go, and Parking tool, including `go-get-product`, `parking-get-pricing`, and `list-pay-pricing-entries`. With that header, `tools/list` returns all **20** tools. `list-partner-products` returns up to 100 products belonging to the authenticated partner account. Generate the key in [panel.paymove.io](https://panel.paymove.io).
+Catalog and management tools (`list-partner-products`, `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`, and the other partner tools in the reference below) are documented in this repository as the partner surface. They require `X-API-KEY: <YOUR_PAYMOVE_API_KEY>`. The running server decides which of them a key actually exposes. `list-partner-products` returns up to 100 products belonging to the authenticated partner account. Generate the key in [panel.paymove.io](https://panel.paymove.io).
 
 **Claude Code:**
 
@@ -763,13 +763,41 @@ Paymove currently provides **615 active public services across 69 cities in Pola
 
 <br />
 
-## Available MCP Tools (20)
+## Agent payment process
 
-Full parameter schemas are in [`docs/tools.md`](./docs/tools.md). All monetary amounts are integers in **grosze** (`1000` = `10.00 PLN`).
+Every purchase goes through the same seven steps. Detail, the `initialize` instructions text, and each tool description are in [`docs/agent-payment.md`](./docs/agent-payment.md) and [`docs/mcp-agent-contract.json`](./docs/mcp-agent-contract.json).
+
+1. Find the product with `search-public-products`, then load variants and prices with `go-purchase`, `pay-purchase`, or `parking-purchase`. Show the variants. The user chooses.
+2. Settle the variant, the quantity, and the email. When an email is already known, ask "Send it to the same address?"
+3. Quote without a BLIK code. Show the seller (`merchant`), the product, the items total, the fee, and `expectedTotal`. Show validity only when the tool states it.
+4. Wait for an explicit acceptance of that `expectedTotal`.
+5. Pay by default with `productLink`, outside the chat. In ChatGPT this link is mandatory. A BLIK code in the chat is sent only on a platform that allows it, and only in the call that starts the payment.
+6. While a payment is pending or its outcome is unknown, call `get-payment-status`. Leave the previous payment as the only one in flight.
+7. Tell the user the status and where the ticket or confirmation went: the confirmed email, and `summaryLink` when the tool returns it.
+
+The BLIK code is not stored and not repeated. The agent does not guess a variant or an amount.
+
+The live server does not yet return this text in `initialize.instructions`. Clients that only read `tools/list` still see the backend descriptions. This repository is the copy agents and the backend can follow.
+
+## Public purchase tools
+
+Schemas: [`docs/purchase-tools.md`](./docs/purchase-tools.md). Descriptions the agent follows: [`docs/mcp-agent-contract.json`](./docs/mcp-agent-contract.json).
+
+| Tool | Role |
+| :--- | :--- |
+| `search-public-products` | Find a product and its `productLink` |
+| `go-purchase` | GO variants, quote, and in-chat BLIK only where the platform allows it |
+| `pay-purchase` | PAY options, quote, and in-chat BLIK only where the platform allows it |
+| `parking-purchase` | Parking quote. `STANDARD` needs `durationMinutes`. `EXTERNAL_PRICING` follows the plate |
+| `get-payment-status` | Read status. Does not start a payment |
+
+## Partner catalog and management tools (reference)
+
+Full parameter schemas are in [`docs/tools.md`](./docs/tools.md). All monetary amounts are integers in **grosze** (`1000` = `10.00 PLN`). These tools are the partner reference in this repository. They were not in the unauthenticated `tools/list` checked on 14 November 2026.
 
 | Domain | Tool | Auth | Description |
 | :--- | :--- | :--- | :--- |
-| **Discovery** | `search-public-products` | Public | Search active public products by `query` (name, full name, short name, location), `location` (city), and `productType` (`GO`, `PAY`, `PARKING`). Returns up to 50 rows: `count`, `totalElements`, and `products` with `productLink` |
+| **Discovery** | `search-public-products` | Public | Search active public products by `query`, `location`, and `productType` (`GO`, `PAY`, `PARKING`). Returns `productLink`, paged with `limit`, `page`, and `hasMore` |
 | **Discovery** | `list-partner-products` | `X-API-KEY` | List the authenticated partner's products for a required `productType` (`PAY`, `GO`, `PARKING`) |
 | **Pay&Go** | `go-get-product` | `X-API-KEY` | Get ticket options, prices, and direct checkout URL for a `GO` product |
 | **Pay&Go** | `go-create-product` | `X-API-KEY` | Create a new `GO` ticket or digital storefront (`go.paymove.io/{id}`) |
@@ -790,7 +818,7 @@ Full parameter schemas are in [`docs/tools.md`](./docs/tools.md). All monetary a
 | **Pay** | `update-pay-pricing-entry` | `X-API-KEY` | Update a pricing tier on a `PAY` product |
 | **Pay** | `delete-pay-pricing-entry` | `X-API-KEY` | Remove a pricing tier from a `PAY` product |
 
-`search-public-products` is the only tool that works without an API key. It also works when `X-API-KEY` is set. A product in the response includes `productId`, `name`, `fullName`, `shortName`, `productType`, `location`, `currency`, and `productLink`. The other 19 tools require `X-API-KEY: <YOUR_PAYMOVE_API_KEY>`. `list-partner-products` returns up to 100 products belonging to the authenticated partner account. Public price lists are also available without a key at `GET https://api.paymove.io/api/go/product/{id}/pricing`, `GET https://api.paymove.io/api/parking/product/{id}/pricing`, and `GET https://api.paymove.io/api/product/{id}/public`.
+`search-public-products` works without an API key and also when `X-API-KEY` is set. A product in its response includes `productId`, `name`, and, when set, `fullName`, `shortName`, `productType`, `location`, `currency`, and `productLink`. The purchase tools in the public table above are also available without a key. The partner tools in this table require `X-API-KEY: <YOUR_PAYMOVE_API_KEY>` when the backend exposes them. `list-partner-products` returns up to 100 products belonging to the authenticated partner account. Public price lists are also available without a key at `GET https://api.paymove.io/api/go/product/{id}/pricing`, `GET https://api.paymove.io/api/parking/product/{id}/pricing`, and `GET https://api.paymove.io/api/product/{id}/public`.
 
 <br />
 

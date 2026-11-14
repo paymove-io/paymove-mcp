@@ -1,6 +1,6 @@
 # Paymove Public Catalog — Complete Locations & Products Directory
 
-> **Public catalog discovery:** Every product and location in this directory can be found by an AI agent through the Paymove MCP Server (`https://api.paymove.io/api/mcp`) **without an API key** using `search-public-products`. The tool returns a direct purchase link (`productLink`: `https://go.paymove.io/{shortName}`, `https://pay.paymove.io/{shortName}`, or `https://park.paymove.io/{shortName}`, and `{productId}` when `shortName` is empty). The other 19 MCP tools, including `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`, and `list-partner-products`, require `X-API-KEY`.
+> **Public catalog discovery:** Every product and location in this directory can be found by an AI agent through the Paymove MCP Server (`https://api.paymove.io/api/mcp`) **without an API key** using `search-public-products`. The tool returns a direct purchase link (`productLink`: `https://go.paymove.io/{shortName}`, `https://pay.paymove.io/{shortName}`, or `https://park.paymove.io/{shortName}`, and `{productId}` when `shortName` is empty). Buying follows [the agent payment process](./agent-payment.md): show variants and prices, quote `expectedTotal`, and pay through `productLink` outside the chat unless the platform allows a BLIK code in the chat. Partner catalog tools, including `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`, and `list-partner-products`, require `X-API-KEY` when the backend exposes them.
 
 ---
 
