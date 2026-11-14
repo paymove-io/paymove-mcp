@@ -33,7 +33,7 @@ Kupuj bilety miejskie i opłacaj parkingi w całej Polsce przez agenta bez klucz
 
 ### 1. Tryb publiczny (bez klucza API)
 
-Bez klucza API `tools/list` zwraca wyłącznie `search-public-products`. Każdy agent AI wyszukuje tym narzędziem aktywne usługi miejskie, bilety, parkingi i płatności w całej Polsce po nazwie, mieście albo typie (`GO`, `PARKING`, `PAY`) i dostaje bezpośredni link zakupowy (`productLink`) do opłacenia przez BLIK, Apple Pay, Google Pay, kartę albo PayPo. To samo narzędzie działa także z kluczem API.
+Bez klucza API `tools/list` zwraca pięć publicznych narzędzi zakupowych: `search-public-products`, `go-purchase`, `pay-purchase`, `parking-purchase` i `get-payment-status`. Agent wyszukuje usługę, pobiera warianty i ceny, liczy `expectedTotal` i prowadzi płatność. Domyślnie płaci się linkiem `productLink` na stronie Paymove, poza czatem. W ChatGPT ten link jest obowiązkowy. Kod BLIK w czacie jest tylko tam, gdzie platforma na to pozwala, i tylko w wywołaniu, które uruchamia płatność. Cały proces: [Proces płatności dla agenta](./docs/agent-payment.pl.md).
 
 **Claude Code:**
 
@@ -57,7 +57,7 @@ claude mcp add --transport http paymove https://api.paymove.io/api/mcp
 
 ### 2. Tryb partnerski (z kluczem `X-API-KEY`)
 
-Pozostałe **19** narzędzi wymaga klucza partnera w nagłówku `X-API-KEY: <YOUR_PAYMOVE_API_KEY>`. Dotyczy to `list-partner-products` oraz każdego narzędzia Pay, Pay&Go i Parking, w tym `go-get-product`, `parking-get-pricing` i `list-pay-pricing-entries`. Z tym nagłówkiem `tools/list` zwraca wszystkie **20** narzędzi. `list-partner-products` zwraca do 100 produktów należących do zalogowanego konta partnera. Klucz generujesz w [panel.paymove.io](https://panel.paymove.io).
+Narzędzia katalogu i zarządzania (`list-partner-products`, `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries` i pozostałe narzędzia partnerskie z opisu poniżej) są w tym repozytorium opisane jako powierzchnia partnerska. Wymagają nagłówka `X-API-KEY: <YOUR_PAYMOVE_API_KEY>`. Działający serwer decyduje, które z nich dany klucz faktycznie wystawia. `list-partner-products` zwraca do 100 produktów należących do zalogowanego konta partnera. Klucz generujesz w [panel.paymove.io](https://panel.paymove.io).
 
 **Claude Code:**
 
@@ -763,13 +763,41 @@ W sieci Paymove działa obecnie **615 aktywnych usług publicznych w 69 miastach
 
 <br />
 
-## Dostępne narzędzia MCP (20)
+## Proces płatności dla agenta
 
-Pełna specyfikacja parametrów znajduje się w [`docs/tools.md`](./docs/tools.md). Wszystkie kwoty podawane są w **groszach** (`1000` = `10,00 PLN`).
+Każdy zakup idzie tymi siedmioma krokami. Szczegóły, tekst `instructions` dla `initialize` i opis każdego narzędzia są w [`docs/agent-payment.pl.md`](./docs/agent-payment.pl.md) i [`docs/mcp-agent-contract.json`](./docs/mcp-agent-contract.json).
+
+1. Znajdź produkt przez `search-public-products`, potem pobierz warianty i ceny przez `go-purchase`, `pay-purchase` albo `parking-purchase`. Pokaż warianty. Wybiera użytkownik.
+2. Ustal wariant, ilość i email. Gdy email jest już znany, zapytaj: „Wysłać na ten sam adres?”
+3. Zrób wycenę bez kodu BLIK. Pokaż sprzedawcę (`merchant`), produkt, sumę pozycji, opłatę i `expectedTotal`. Ważność pokaż tylko wtedy, gdy poda ją narzędzie.
+4. Czekaj na wyraźną akceptację tego `expectedTotal`.
+5. Domyślnie zapłać przez `productLink`, poza czatem. W ChatGPT ten link jest obowiązkowy. Kod BLIK w czacie wysyłasz tylko na platformie, która na to pozwala, i tylko w wywołaniu, które uruchamia płatność.
+6. Gdy płatność jest w toku albo jej wynik jest nieznany, wywołaj `get-payment-status`. Poprzednia płatność zostaje jedyną rozpoczętą.
+7. Podaj użytkownikowi status i miejsce, w które trafił bilet albo potwierdzenie: potwierdzony email oraz `summaryLink`, gdy narzędzie go zwraca.
+
+Kod BLIK nie jest zapisywany ani powtarzany. Agent nie zgaduje wariantu ani kwoty.
+
+Żywy serwer nie zwraca jeszcze tego tekstu w `initialize.instructions`. Klient, który czyta tylko `tools/list`, nadal widzi opisy z backendu. To repozytorium jest kopią, za którą mogą iść agenci i backend.
+
+## Publiczne narzędzia zakupowe
+
+Schematy: [`docs/purchase-tools.md`](./docs/purchase-tools.md). Opisy, których trzyma się agent: [`docs/mcp-agent-contract.json`](./docs/mcp-agent-contract.json).
+
+| Narzędzie | Rola |
+| :--- | :--- |
+| `search-public-products` | Znajduje produkt i jego `productLink` |
+| `go-purchase` | Warianty GO, wycena i BLIK w czacie tylko tam, gdzie platforma pozwala |
+| `pay-purchase` | Opcje PAY, wycena i BLIK w czacie tylko tam, gdzie platforma pozwala |
+| `parking-purchase` | Wycena parkingu. `STANDARD` wymaga `durationMinutes`. `EXTERNAL_PRICING` bierze kwotę z tablicy |
+| `get-payment-status` | Odczyt statusu. Nie uruchamia płatności |
+
+## Narzędzia partnerskie katalogu i zarządzania (opis)
+
+Pełna specyfikacja parametrów znajduje się w [`docs/tools.md`](./docs/tools.md). Wszystkie kwoty podawane są w **groszach** (`1000` = `10,00 PLN`). To opis partnerski w tym repozytorium. Tych narzędzi nie było na nieuwierzytelnionym `tools/list` sprawdzonym 14 listopada 2026.
 
 | Domena | Narzędzie | Autoryzacja | Opis |
 | :--- | :--- | :--- | :--- |
-| **Katalog** | `search-public-products` | Publiczne | Wyszukiwanie aktywnych produktów publicznych po `query` (nazwa, pełna nazwa, skrót, lokalizacja), `location` (miasto) i `productType` (`GO`, `PAY`, `PARKING`). Zwraca do 50 wyników: `count`, `totalElements` i `products` z `productLink` |
+| **Katalog** | `search-public-products` | Publiczne | Wyszukiwanie aktywnych produktów publicznych po `query`, `location` i `productType` (`GO`, `PAY`, `PARKING`). Zwraca `productLink`, stronicowane przez `limit`, `page` i `hasMore` |
 | **Katalog** | `list-partner-products` | `X-API-KEY` | Lista produktów zalogowanego partnera dla wymaganego `productType` (`PAY`, `GO`, `PARKING`) |
 | **Pay&Go** | `go-get-product` | `X-API-KEY` | Pobranie cennika biletów i bezpośredniego linku zakupowego dla produktu `GO` |
 | **Pay&Go** | `go-create-product` | `X-API-KEY` | Utworzenie nowej strony biletowej lub produktowej (`go.paymove.io/{id}`) |
@@ -790,7 +818,7 @@ Pełna specyfikacja parametrów znajduje się w [`docs/tools.md`](./docs/tools.m
 | **Pay** | `update-pay-pricing-entry` | `X-API-KEY` | Aktualizacja pozycji cennika na produkcie `PAY` |
 | **Pay** | `delete-pay-pricing-entry` | `X-API-KEY` | Usunięcie pozycji cennika z produktu `PAY` |
 
-`search-public-products` jest jedynym narzędziem, które działa bez klucza API. Działa także wtedy, gdy ustawisz `X-API-KEY`. Produkt w odpowiedzi zawiera `productId`, `name`, `fullName`, `shortName`, `productType`, `location`, `currency` i `productLink`. Pozostałe 19 narzędzi wymaga nagłówka `X-API-KEY: <YOUR_PAYMOVE_API_KEY>`. `list-partner-products` zwraca do 100 produktów należących do zalogowanego konta partnera. Publiczne cenniki są też dostępne bez klucza pod `GET https://api.paymove.io/api/go/product/{id}/pricing`, `GET https://api.paymove.io/api/parking/product/{id}/pricing` i `GET https://api.paymove.io/api/product/{id}/public`.
+`search-public-products` działa bez klucza API i także wtedy, gdy ustawisz `X-API-KEY`. Produkt w odpowiedzi zawiera `productId`, `name` oraz, gdy są ustawione, `fullName`, `shortName`, `productType`, `location`, `currency` i `productLink`. Narzędzia zakupowe z tabeli powyżej też działają bez klucza. Narzędzia partnerskie z tej tabeli wymagają nagłówka `X-API-KEY: <YOUR_PAYMOVE_API_KEY>`, gdy backend je wystawia. `list-partner-products` zwraca do 100 produktów należących do zalogowanego konta partnera. Publiczne cenniki są też dostępne bez klucza pod `GET https://api.paymove.io/api/go/product/{id}/pricing`, `GET https://api.paymove.io/api/parking/product/{id}/pricing` i `GET https://api.paymove.io/api/product/{id}/public`.
 
 <br />
 

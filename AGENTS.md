@@ -22,7 +22,12 @@
 > 13. Do not pin a version of `@paymove-io/sdk` - install the latest.
 > 14. If the merchant has no `productId` yet, do not stop at a placeholder: ask for the API key, the `partnerId` and the shop name, propose defaults for `location` and `timezone` (`Europe/Warsaw`), offer the optional fields once, then create the product for them with `POST /api/product/pay` and take `productId` from `id` in the response. Do the same for the webhook: register it, then assign it to the product. Guided procedure: https://docs.paymove.io/skill.md (Steps 1-2).
 > 15. Full documentation index: https://docs.paymove.io/llms.txt · Copy-paste quickstart: https://docs.paymove.io/en/quickstart.md · Agent skill: https://docs.paymove.io/skill.md
-> 16. Paymove MCP (Streamable HTTP) primary endpoint: https://api.paymove.io/api/mcp (also https://mcp-api.paymove.io/mcp). Public catalog discovery (`search-public-products`) does not require `X-API-KEY`. Partner tools (including `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`, and `list-partner-products`) require `X-API-KEY`.
+> 16. Paymove MCP (Streamable HTTP) primary endpoint: https://api.paymove.io/api/mcp (also https://mcp-api.paymove.io/mcp). Public purchase tools (`search-public-products`, `go-purchase`, `pay-purchase`, `parking-purchase`, `get-payment-status`) do not require `X-API-KEY`. Partner catalog tools (including `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries`, and `list-partner-products`) require `X-API-KEY` when the backend exposes them.
+> 17. When buying for the user through Paymove MCP, follow `docs/agent-payment.md` and `docs/mcp-agent-contract.json`. Find the product, show variants and prices, settle variant, quantity, and email. If an email is already known, ask "Send it to the same address?" Quote `expectedTotal` with the seller, the product, and the fee. Show validity only when the tool states it.
+> 18. Take payment only after the user explicitly accepts that `expectedTotal`. Pass the same integer. Do not guess a variant or an amount.
+> 19. Default payment is `productLink`, outside the chat. In ChatGPT that link is mandatory, because ChatGPT blocks a BLIK code in the chat. A BLIK code in the chat is sent only on a platform that allows it, and only in the purchase call that starts the payment. Do not store the code and do not repeat it.
+> 20. While a payment is pending or its outcome is unknown, call `get-payment-status`. Do not start a second payment. Afterwards confirm the status and where the ticket or confirmation went (the confirmed email, and `summaryLink` when returned).
+> 21. The `instructions` field of MCP `initialize`, and the `tools/list` descriptions, are served by the backend at api.paymove.io. This repository holds the contract text. It does not change what the live server returns. There is no `poppy.json` here.
 
 # Integracja z agentami AI
 
@@ -30,7 +35,9 @@
 
 Dokumentacja Paymove jest przygotowana tak, by mógł z niej korzystać nie tylko człowiek, ale i agent AI piszący kod. Poniżej znajdziesz gotowe sposoby, żeby z tego skorzystać.
 
-Serwer MCP (Streamable HTTP) działa pod głównym adresem `https://api.paymove.io/api/mcp` (także `https://mcp-api.paymove.io/mcp`). Publiczne odkrywanie katalogu (`search-public-products`) nie wymaga klucza `X-API-KEY`. Narzędzia partnerskie (w tym `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries` i `list-partner-products`) wymagają `X-API-KEY`.
+Serwer MCP (Streamable HTTP) działa pod głównym adresem `https://api.paymove.io/api/mcp` (także `https://mcp-api.paymove.io/mcp`). Publiczne narzędzia zakupowe (`search-public-products`, `go-purchase`, `pay-purchase`, `parking-purchase`, `get-payment-status`) nie wymagają klucza `X-API-KEY`. Narzędzia partnerskie (w tym `go-get-product`, `parking-get-pricing`, `list-pay-pricing-entries` i `list-partner-products`) wymagają `X-API-KEY`, gdy backend je wystawia.
+
+Zakup dla użytkownika przez MCP idzie procesem z `docs/agent-payment.pl.md`: warianty z cenami, email już znany jest proponowany („Wysłać na ten sam adres?”), wycena `expectedTotal` ze sprzedawcą, produktem i opłatą, wyraźna akceptacja tej kwoty, domyślnie płatność linkiem `productLink` poza czatem (w ChatGPT obowiązkowo), kod BLIK w czacie tylko tam, gdzie platforma pozwala, i tylko w wywołaniu tuż przed płatnością. Przy statusie pending albo nieznanym jest `get-payment-status`, bez drugiej płatności. Kod BLIK nie jest zapisywany ani powtarzany. Pole `instructions` przy `initialize` i opisy z `tools/list` ustawia backend, nie to repozytorium.
 
 ## Zanim odpalisz agenta
 
